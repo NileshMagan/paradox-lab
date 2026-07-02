@@ -225,7 +225,7 @@ export function buildCoreAlpha(): RoomDetail {
     rock.castShadow = true;
     root.add(rock);
   }
-  const door = rustedDoor(rust, rustDark);
+  const door = rustedDoor(rust, rustDark).group;
   door.position.set(0, 0, 9.55);
   door.rotation.y = Math.PI;
   root.add(door);

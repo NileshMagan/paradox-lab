@@ -1,10 +1,14 @@
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { ensureAudio } from '@/core/audio';
 import { Engine } from '@/core/Engine';
 import { ViewNavigator } from '@/core/ViewNavigator';
 import type { Dimension } from '@/dimensions/Dimension';
 import { AlphaDimension } from '@/dimensions/alpha/AlphaDimension';
 import { BetaDimension } from '@/dimensions/beta/BetaDimension';
+import { Interactor } from '@/systems/interaction/Interactor';
+import { puzzleState, type PuzzleId } from '@/systems/puzzle/state';
 import { DimensionId } from '@/types';
+import { setHoverLabel } from '@/ui/interactionHud';
 import '@/ui/devHud';
 
 /**
@@ -13,6 +17,7 @@ import '@/ui/devHud';
  *   [Q]/[E]  previous / next room
  *   [0]      toggle admin overview (bird's-eye dollhouse, ceilings hidden)
  * URL params: ?dim=alpha|beta  ?view=overview  ?room=1..3
+ *             ?solve=sync.frequency,… (pre-solve puzzles, for dev/testing)
  */
 const container = document.getElementById('app');
 if (!container) throw new Error('#app container not found');
@@ -32,21 +37,33 @@ const params = new URLSearchParams(window.location.search);
 let active: DimensionId = params.get('dim') === 'beta' ? DimensionId.Beta : DimensionId.Alpha;
 
 const navigator = new ViewNavigator(engine.camera, controls, () => dimensions[active].scene);
+const interactor = new Interactor(engine.camera, engine.renderer.domElement);
+interactor.onHoverChange = setHoverLabel;
 
 function activate(id: DimensionId): void {
   active = id;
   engine.setScene(dimensions[id].scene);
   navigator.refresh(); // re-apply overview/ceiling state to the new scene
+  interactor.setTargets(dimensions[id].interactables);
   window.dispatchEvent(new CustomEvent('dimension:change', { detail: id }));
 }
 activate(active);
+
+// Dev helpers: pre-solve puzzles from the URL, e.g. ?solve=sync.frequency.
+for (const id of params.get('solve')?.split(',') ?? []) {
+  puzzleState.solve(id.trim() as PuzzleId);
+}
 
 // Initial view from URL (handy for headless verification and deep links).
 if (params.get('view') === 'overview') navigator.toggleOverview();
 else navigator.focusRoom((Number(params.get('room')) || 1) - 1);
 
+// WebAudio can only start after a user gesture.
+window.addEventListener('pointerdown', ensureAudio, { once: true });
+
 engine.onUpdate((delta, elapsed) => {
   controls.update();
+  interactor.update();
   dimensions[active].update(delta, elapsed);
 });
 

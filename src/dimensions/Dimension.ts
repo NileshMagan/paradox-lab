@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DIMENSION_THEME, RENDER } from '@/config/constants';
 import { FACILITY } from '@/config/facility';
-import type { RoomDetail } from '@/rooms/types';
+import type { Interactable, RoomDetail } from '@/rooms/types';
 import { DimensionId, type PropKind, type RoomBlueprint } from '@/types';
 
 /**
@@ -13,6 +13,8 @@ import { DimensionId, type PropKind, type RoomBlueprint } from '@/types';
  */
 export abstract class Dimension {
   readonly scene = new THREE.Scene();
+  /** Interactive hotspots contributed by this dimension's rooms. */
+  readonly interactables: Interactable[] = [];
   protected readonly theme: (typeof DIMENSION_THEME)[DimensionId];
   /** Per-frame hooks contributed by detailed rooms. */
   private readonly detailUpdaters: Array<(delta: number, elapsed: number) => void> = [];
@@ -35,6 +37,7 @@ export abstract class Dimension {
       if (detail) {
         group.add(detail.object);
         if (detail.update) this.detailUpdaters.push(detail.update);
+        if (detail.interactables) this.interactables.push(...detail.interactables);
         this.scene.add(group);
         continue;
       }

@@ -64,8 +64,26 @@ reference art in `docs/reference/`. All scenery is procedural (canvas textures
   cage, time-dilation charts with a 2× countdown, Core Control Terminal,
   sleek lever, orbiting drones.
 
-Not yet built: puzzle logic/interaction, audio, and the multiplayer/voice
-networking layer (see ARCHITECTURE.md).
+**The first puzzle loop is playable** (single-client, using the `1`/`2`
+dimension toggle to act as both players):
+
+1. **Alpha** — the bucket drips a rhythm (short · short · long · short), with
+   sound. Click the bucket for a hint.
+2. **Beta** (`2`) — click the **Audio Analyzer** to arm it, then tap the
+   rhythm on it (5 taps, any tempo — intervals are matched scale-free).
+   Success decrypts the **Star Map**: *SECTOR LEO*.
+3. **Alpha** (`1`) — the mural rings unjam. Click the **Stone Mural** to
+   rotate; align **♌ Leo** under the notch.
+4. Both R1 doors release — Alpha's hatch wheel spins and creaks open, Beta's
+   lockdown bar turns green and the leaf slides up.
+
+Hover anything glowing for a label; toasts narrate progress. Dev param
+`?solve=sync.frequency,sync.starmap` pre-solves for testing.
+
+Not yet built: puzzles for R2/R3 (props are dressed and labelled, logic
+pending), full ambient audio, and the multiplayer/voice networking layer —
+puzzle state currently lives in a client-side store shaped to move
+server-side (see ARCHITECTURE.md).
 
 ## Current structure
 

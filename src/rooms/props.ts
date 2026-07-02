@@ -49,13 +49,17 @@ export function vine(
   return new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.017, 5), material);
 }
 
-/** Rusted bulkhead door with a wheel handle (Alpha). Origin at floor centre. */
+/**
+ * Rusted bulkhead door with a wheel handle (Alpha). Origin at floor centre.
+ * `leaf` and `wheel` are exposed so puzzles can animate it opening — the
+ * wheel is parented to the leaf so they swing together.
+ */
 export function rustedDoor(
   rust: THREE.Material,
   rustDark: THREE.Material,
   width = 1.5,
   height = 2.5,
-): THREE.Group {
+): { group: THREE.Group; leaf: THREE.Mesh; wheel: THREE.Group } {
   const group = new THREE.Group();
   const frame = new THREE.Mesh(new THREE.BoxGeometry(width + 0.6, height + 0.5, 0.24), rustDark);
   frame.position.y = (height + 0.5) / 2;
@@ -68,9 +72,10 @@ export function rustedDoor(
     spoke.rotation.z = (i * Math.PI) / 3;
     wheel.add(spoke);
   }
-  wheel.position.set(0, height / 2 + 0.1, 0.2);
-  group.add(frame, leaf, wheel);
-  return group;
+  wheel.position.set(0, 0.05, 0.14); // leaf-local, at the leaf's centre
+  leaf.add(wheel);
+  group.add(frame, leaf);
+  return { group, leaf, wheel };
 }
 
 /** Extruded octagon slab (Beta door leaf/frame shape). */
@@ -94,7 +99,7 @@ export function sciFiDoor(
   steel: THREE.Material,
   black: THREE.Material,
   label: string,
-): { group: THREE.Group; lockBar: THREE.Mesh } {
+): { group: THREE.Group; lockBar: THREE.Mesh; leaf: THREE.Mesh } {
   const group = new THREE.Group();
   const frame = octagonSlab(1.45, 0.14, black);
   const leaf = octagonSlab(1.25, 0.1, steel);
@@ -112,7 +117,7 @@ export function sciFiDoor(
   );
   lockBar.position.set(0, 1.7, 0.22);
   group.add(frame, leaf, seam, plate, lockBar);
-  return { group, lockBar };
+  return { group, lockBar, leaf };
 }
 
 /**

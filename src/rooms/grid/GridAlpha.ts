@@ -263,10 +263,10 @@ export function buildGridAlpha(): RoomDetail {
   puddle.receiveShadow = true;
   root.add(puddle);
   // Doors at both ends (back to R1, on to R3).
-  const doorIn = rustedDoor(rust, rustDark);
+  const doorIn = rustedDoor(rust, rustDark).group;
   doorIn.position.set(0, 0, D / 2 - 0.1);
   doorIn.rotation.y = Math.PI;
-  const doorOut = rustedDoor(rust, rustDark);
+  const doorOut = rustedDoor(rust, rustDark).group;
   doorOut.position.set(0, 0, -D / 2 + 0.1);
   root.add(doorIn, doorOut);
 

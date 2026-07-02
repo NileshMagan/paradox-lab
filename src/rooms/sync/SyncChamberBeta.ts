@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
+import { DRIP_PATTERN, RHYTHM_TOLERANCE } from '@/config/puzzles';
+import { ensureAudio, playBlip, playFail, playSuccess } from '@/core/audio';
 import { betaFloorTextures, HoloScreen, muralTexture, starmapTexture, steelTexture } from '@/core/textures';
 import { sciFiDoor } from '@/rooms/props';
-import type { RoomDetail } from '@/rooms/types';
+import type { Interactable, RoomDetail } from '@/rooms/types';
+import { puzzleState } from '@/systems/puzzle/state';
 import { RoomId } from '@/types';
 import { buildOctagonShell } from './octagonShell';
 
@@ -175,18 +178,27 @@ export function buildSyncChamberBeta(): RoomDetail {
   const consoleBase = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.9, 0.55), black);
   consoleBase.position.set(gearsPos.x, 0.45, gearsPos.z);
   consoleBase.rotation.y = -Math.PI / 2;
-  const consoleScreen = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.2, 0.85),
-    new THREE.MeshBasicMaterial({ map: starmapTexture() }),
-  );
+  const starmapMat = new THREE.MeshBasicMaterial({ map: starmapTexture(false) });
+  const consoleScreen = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.85), starmapMat);
   consoleScreen.position.set(gearsPos.x - 0.29, 1.25, gearsPos.z);
   consoleScreen.rotation.y = -Math.PI / 2;
   consoleScreen.rotation.x = -0.35; // angled up toward the player
   root.add(consoleBase, consoleScreen);
+  // Decrypt the map the moment the frequency key lands (however it lands —
+  // tapped here or pre-solved via the dev URL param).
+  puzzleState.onSolved((id) => {
+    if (id === 'sync.frequency') {
+      starmapMat.map = starmapTexture(true);
+      starmapMat.needsUpdate = true;
+      holo.status = 'FREQ ACCEPTED ✓';
+      holo.subStatus = 'STAR MAP DECRYPTED — READ IT';
+      holo.ticks = 0;
+    }
+  });
 
   // ── Octagonal R2 door with lockdown bar (slot: sync.hatch) ───────────────
   const hatchPos = slotLocal(RoomId.SyncChamber, 'sync.hatch');
-  const { group: doorGroup, lockBar } = sciFiDoor(steel, black, 'R2');
+  const { group: doorGroup, lockBar, leaf: doorLeaf } = sciFiDoor(steel, black, 'R2');
   doorGroup.position.set(hatchPos.x, 1.55, hatchPos.z + 0.18);
   root.add(doorGroup);
 
@@ -206,21 +218,133 @@ export function buildSyncChamberBeta(): RoomDetail {
   beaconPivot.add(beaconBeam, beaconBeam.target);
   root.add(beaconPivot);
 
+  // ── The rhythm puzzle (sync.frequency) ───────────────────────────────────
+  // First click arms the analyzer; the next DRIP_PATTERN.length+1 clicks are
+  // taps. Tap intervals are compared scale-free against the drip pattern.
+  const TAPS_NEEDED = DRIP_PATTERN.length + 1;
+  let armed = false;
+  let taps: number[] = [];
+  const disarm = (status: string, sub: string): void => {
+    armed = false;
+    taps = [];
+    holo.ticks = 0;
+    holo.status = status;
+    holo.subStatus = sub;
+  };
+  const evaluateTaps = (): void => {
+    const gaps = taps.slice(1).map((t, i) => t - taps[i]);
+    // Least-squares tempo fit: the player can tap at any speed.
+    const scale =
+      gaps.reduce((sum, gap, i) => sum + gap * DRIP_PATTERN[i], 0) /
+      DRIP_PATTERN.reduce((sum, p) => sum + p * p, 0);
+    const ok =
+      scale > 0 &&
+      gaps.every((gap, i) => Math.abs(gap - scale * DRIP_PATTERN[i]) / (scale * DRIP_PATTERN[i]) <= RHYTHM_TOLERANCE);
+    if (ok) {
+      puzzleState.solve('sync.frequency');
+      playSuccess();
+      disarm('FREQ ACCEPTED ✓', 'STAR MAP DECRYPTED — READ IT');
+    } else {
+      playFail();
+      disarm('PATTERN MISMATCH ✗', 'CLICK TO RE-ARM');
+    }
+  };
+  const onAnalyzerClick = (): void => {
+    ensureAudio();
+    if (puzzleState.isSolved('sync.frequency')) return;
+    const now = performance.now() / 1000;
+    if (!armed) {
+      armed = true;
+      taps = [];
+      holo.ticks = 0;
+      holo.status = 'FREQ INPUT: [ REC ]';
+      holo.subStatus = `TAP THE RHYTHM (${TAPS_NEEDED} taps)`;
+      playBlip(660);
+      return;
+    }
+    taps.push(now);
+    holo.ticks = taps.length;
+    playBlip(880);
+    if (taps.length === TAPS_NEEDED) evaluateTaps();
+  };
+
   // ── Animation ────────────────────────────────────────────────────────────
   const holoMat = holoPlane.material as THREE.MeshBasicMaterial;
-  const update = (_delta: number, elapsed: number): void => {
+  let doorProgress = 0; // 0 sealed → 1 open, driven once sync.starmap solves
+  const lockBarMat = lockBar.material as THREE.MeshBasicMaterial;
+  const update = (delta: number, elapsed: number): void => {
     holo.update(elapsed);
+    // Abandoned recording times out.
+    if (armed && taps.length > 0 && performance.now() / 1000 - taps[taps.length - 1] > 4) {
+      playFail();
+      disarm('SIGNAL LOST ✗', 'CLICK TO RE-ARM');
+    }
     // Holographic flicker.
     holoMat.opacity = 0.82 + Math.sin(elapsed * 17) * 0.05 + Math.sin(elapsed * 3.1) * 0.05;
     // Artifact slowly rotates in its case.
     artifact.rotation.y = elapsed * 0.6;
-    // Lockdown bar blinks; beacon sweeps and pulses.
-    lockBar.visible = Math.sin(elapsed * 5) > -0.4;
+    // Lockdown bar: blinks red while sealed; solid green once released.
+    if (puzzleState.isSolved('sync.starmap')) {
+      lockBar.visible = true;
+      lockBarMat.color.setHex(0x39f0a0);
+      if (doorProgress < 1) {
+        doorProgress = Math.min(1, doorProgress + delta / 2);
+        doorLeaf.position.y = doorProgress * 2.4; // slides up into the frame
+      }
+    } else {
+      lockBar.visible = Math.sin(elapsed * 5) > -0.4;
+    }
     beaconPivot.rotation.y = elapsed * 2.2;
     beaconBeam.intensity = 22 + Math.sin(elapsed * 4.4) * 10;
     // The floor web breathes faintly.
     resin.emissiveIntensity = 0.5 + Math.sin(elapsed * 1.4) * 0.12;
   };
 
-  return { object: root, update };
+  // ── Interactables ────────────────────────────────────────────────────────
+  const say = (text: string): void => {
+    window.dispatchEvent(new CustomEvent('game:toast', { detail: text }));
+  };
+  const interactables: Interactable[] = [
+    {
+      object: holoPlane,
+      label: () =>
+        puzzleState.isSolved('sync.frequency')
+          ? 'Audio Analyzer — frequency locked in.'
+          : armed
+            ? `Audio Analyzer — RECORDING. Tap the rhythm Alpha hears (${taps.length}/${TAPS_NEEDED})`
+            : 'Audio Analyzer — click to arm, then tap the drip rhythm Alpha describes.',
+      onInteract: onAnalyzerClick,
+    },
+    {
+      object: consoleScreen,
+      label: () =>
+        puzzleState.isSolved('sync.frequency')
+          ? 'Star Map — SECTOR: LEO ♌. Relay it to Alpha!'
+          : 'Star Map Console — ENCRYPTED. It needs a frequency key.',
+      onInteract: () => {
+        say(
+          puzzleState.isSolved('sync.frequency')
+            ? 'Star map: the LION constellation. Tell Alpha to align ♌ on the mural.'
+            : 'ENCRYPTED. The analyzer wants a frequency… Alpha must hear something.',
+        );
+      },
+    },
+    {
+      object: glass,
+      label: () => 'Containment pedestal — a golden hologram of a carved disc. It exists in both worlds.',
+      onInteract: () => say('The artifact matches something Alpha is standing in front of.'),
+    },
+    {
+      object: doorGroup,
+      label: () =>
+        puzzleState.isSolved('sync.starmap')
+          ? 'Door R2 — lockdown lifted.'
+          : 'Door R2 — LOCKDOWN. The dimensional link must be calibrated first.',
+      onInteract: () => {
+        if (!puzzleState.isSolved('sync.starmap')) say('«ACCESS DENIED — ANOMALY UNCALIBRATED»');
+      },
+    },
+  ];
+
+  return { object: root, update, interactables };
 }

@@ -217,8 +217,11 @@ export function muralTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/** Beta's star-map console screen. */
-export function starmapTexture(): THREE.CanvasTexture {
+/**
+ * Beta's star-map console screen. Locked: encrypted noise. Unlocked: the Leo
+ * constellation and the coordinates Beta must read out to Alpha.
+ */
+export function starmapTexture(unlocked = false): THREE.CanvasTexture {
   const [canvas, ctx] = makeCanvas(512, 512);
   ctx.fillStyle = '#030d1c';
   ctx.fillRect(0, 0, 512, 512);
@@ -228,20 +231,42 @@ export function starmapTexture(): THREE.CanvasTexture {
     const s = Math.random() > 0.92 ? 2.5 : 1.2;
     ctx.fillRect(Math.random() * 512, Math.random() * 512, s, s);
   }
-  // A constellation echoing the mural's Leo.
-  const pts: Array<[number, number]> = [
-    [120, 340], [180, 300], [240, 310], [300, 260], [340, 190], [300, 130], [240, 150],
-  ];
-  ctx.strokeStyle = 'rgba(40,210,255,0.9)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
-  ctx.stroke();
-  for (const [x, y] of pts) {
-    ctx.fillStyle = '#7fe7ff';
+  if (unlocked) {
+    // The constellation echoing the mural — Leo.
+    const pts: Array<[number, number]> = [
+      [120, 340], [180, 300], [240, 310], [300, 260], [340, 190], [300, 130], [240, 150],
+    ];
+    ctx.strokeStyle = 'rgba(40,210,255,0.9)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fill();
+    pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+    ctx.stroke();
+    for (const [x, y] of pts) {
+      ctx.fillStyle = '#7fe7ff';
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#ffd27f';
+    ctx.font = '44px serif';
+    ctx.fillText('♌︎', 395, 110);
+    ctx.font = '26px monospace';
+    ctx.fillText('SECTOR: LEO', 300, 420);
+    ctx.fillStyle = '#8fecff';
+    ctx.font = '18px monospace';
+    ctx.fillText('→ RELAY TO ALPHA: ALIGN THE LION', 60, 460);
+  } else {
+    // Encrypted garbage rows.
+    ctx.fillStyle = 'rgba(47,212,255,0.5)';
+    ctx.font = '16px monospace';
+    for (let row = 0; row < 12; row++) {
+      let line = '';
+      for (let c = 0; c < 26; c++) line += Math.floor(Math.random() * 16).toString(16);
+      ctx.fillText(line, 40, 110 + row * 28);
+    }
+    ctx.fillStyle = '#ff5468';
+    ctx.font = '24px monospace';
+    ctx.fillText('⚠ ENCRYPTED', 170, 470);
   }
   // HUD chrome.
   ctx.strokeStyle = 'rgba(40,210,255,0.5)';
@@ -250,7 +275,7 @@ export function starmapTexture(): THREE.CanvasTexture {
   ctx.font = '22px monospace';
   ctx.fillText('STELLAR MAP // SECTOR 7', 20, 36);
   ctx.font = '16px monospace';
-  ctx.fillText('LOCKED — AWAITING FREQ KEY', 20, 490);
+  ctx.fillText(unlocked ? 'DECRYPTED ✓' : 'LOCKED — AWAITING FREQ KEY', 20, 66);
   const tex = toTexture(canvas);
   tex.wrapS = THREE.ClampToEdgeWrapping;
   tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -281,6 +306,12 @@ export class HoloScreen {
   readonly texture: THREE.CanvasTexture;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+
+  /** Bottom status line — the rhythm puzzle drives these. */
+  status = 'FREQ INPUT: [ ---- ]';
+  subStatus = 'AWAITING RHYTHM…';
+  /** Recorded taps, drawn as tick squares while the analyzer is armed. */
+  ticks = 0;
 
   constructor(
     private readonly w = 512,
@@ -334,7 +365,12 @@ export class HoloScreen {
     ctx.fillText('AUDIO ANALYZER v9.4', 14, 24);
     const blink = Math.sin(elapsed * 3.5) > 0;
     ctx.fillStyle = blink ? '#c9f6ff' : 'rgba(201,246,255,0.35)';
-    ctx.fillText('FREQ INPUT: [ ---- ]   AWAITING RHYTHM…', 14, h - 14);
+    ctx.fillText(`${this.status}   ${this.subStatus}`, 14, h - 14);
+    // Tap ticks while recording.
+    for (let i = 0; i < this.ticks; i++) {
+      ctx.fillStyle = '#7cf9c9';
+      ctx.fillRect(w - 30 - i * 22, h - 28, 14, 14);
+    }
     this.texture.needsUpdate = true;
   }
 }

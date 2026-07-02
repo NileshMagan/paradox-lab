@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
+import { DRIP_LOOP, DRIP_PATTERN, TARGET_GLYPH_INDEX, ZODIAC } from '@/config/puzzles';
+import { ensureAudio, playBlip, playDrip, playSuccess } from '@/core/audio';
 import { concreteTexture, muralTexture } from '@/core/textures';
 import { floraCluster, rustedDoor, vine } from '@/rooms/props';
-import type { RoomDetail } from '@/rooms/types';
+import type { Interactable, RoomDetail } from '@/rooms/types';
+import { puzzleState } from '@/systems/puzzle/state';
 import { RoomId } from '@/types';
 import { buildOctagonShell } from './octagonShell';
 
@@ -140,9 +143,24 @@ export function buildSyncChamberAlpha(): RoomDetail {
     new THREE.MeshStandardMaterial({ color: 0x5b5443, roughness: 0.95 }),
   );
   rim.rotation.y = Math.PI / 2;
-  mural.add(disc, rim);
+  // Pointer notch at the top of the ring — the glyph beneath it is "selected".
+  const notch = new THREE.Mesh(
+    new THREE.ConeGeometry(0.09, 0.22, 4),
+    new THREE.MeshStandardMaterial({
+      color: 0x6b4a26,
+      emissive: 0xffb85c,
+      emissiveIntensity: 0.6,
+    }),
+  );
+  notch.position.set(0.12, 1.62, 0);
+  notch.rotation.z = Math.PI; // point down at the ring
+  mural.add(disc, rim, notch);
   mural.position.set(muralPos.x, muralPos.y, muralPos.z);
   root.add(mural);
+  // Mural ring state (puzzle: sync.starmap). Each click advances one glyph;
+  // the disc spins to match. Index 0 (♈) starts under the notch.
+  let muralIndex = 0;
+  let muralTargetRot = 0;
   // Faint cyan spill from flora onto the mural (her flashlight in the art).
   const muralGlow = new THREE.PointLight(0xbfd9c8, 3, 4, 1.8);
   muralGlow.position.set(muralPos.x + 1.4, muralPos.y, muralPos.z);
@@ -196,20 +214,32 @@ export function buildSyncChamberAlpha(): RoomDetail {
   water.rotation.x = -Math.PI / 2;
   water.position.set(dripPos.x, 0.24, dripPos.z);
   root.add(water);
-  // Three staggered falling droplets, recycled in update().
+  // The drip IS the puzzle: drops land exactly on the DRIP_PATTERN beats.
+  // Landing times within each loop, from the cumulative pattern gaps.
+  const DROP_TOP = HEIGHT - 0.2;
+  const DROP_BOTTOM = 0.26;
+  const FALL_TIME = (DROP_TOP - DROP_BOTTOM) / 3.4;
+  const landTimes: number[] = [];
+  let acc = 0;
+  for (const gap of DRIP_PATTERN) {
+    landTimes.push(acc);
+    acc += gap;
+  }
   const dropMat = new THREE.MeshBasicMaterial({ color: 0xcfe8f0, transparent: true, opacity: 0.8 });
-  const drops = [0, 1, 2].map((i) => {
-    const drop = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 5), dropMat);
-    drop.position.set(dripPos.x, HEIGHT - 0.2 - i * 1.3, dripPos.z);
-    root.add(drop);
-    return drop;
+  const drops = landTimes.map((land) => {
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 5), dropMat);
+    mesh.visible = false;
+    mesh.position.set(dripPos.x, DROP_TOP, dripPos.z);
+    root.add(mesh);
+    return { mesh, land, falling: false };
   });
 
   // ── Rusted hatch door (slot: sync.hatch) ─────────────────────────────────
   const hatchPos = slotLocal(RoomId.SyncChamber, 'sync.hatch');
   const hatch = rustedDoor(rust, rustDark);
-  hatch.position.set(hatchPos.x, hatchPos.y, hatchPos.z + 0.15);
-  root.add(hatch);
+  hatch.group.position.set(hatchPos.x, hatchPos.y, hatchPos.z + 0.15);
+  root.add(hatch.group);
+  let doorProgress = 0; // 0 sealed → 1 open, driven once sync.starmap solves
 
   // ── Bioluminescent flora clusters ────────────────────────────────────────
   const floraSpots: Array<{ x: number; z: number; color: number; s: number }> = [
@@ -306,14 +336,89 @@ export function buildSyncChamberAlpha(): RoomDetail {
       pos.setX(i, pos.getX(i) + Math.sin(elapsed * 0.6 + dustPhase[i]) * delta * 0.02);
     }
     pos.needsUpdate = true;
-    // Droplets fall into the bucket on a loop (the rhythm puzzle's heartbeat).
+    // Droplets fall so they LAND on the pattern beats — the audible rhythm
+    // Beta needs. A drop is released FALL_TIME before its landing beat.
+    const phase = elapsed % DRIP_LOOP;
     for (const drop of drops) {
-      drop.position.y -= delta * 3.4;
-      if (drop.position.y < 0.26) drop.position.y = HEIGHT - 0.2;
+      const sinceLand = (phase - drop.land + DRIP_LOOP) % DRIP_LOOP;
+      const falling = sinceLand > DRIP_LOOP - FALL_TIME || sinceLand === 0;
+      if (falling) {
+        const t = (sinceLand - (DRIP_LOOP - FALL_TIME) + DRIP_LOOP) % DRIP_LOOP;
+        drop.mesh.position.y = DROP_TOP - (t / FALL_TIME) * (DROP_TOP - DROP_BOTTOM);
+        drop.mesh.visible = true;
+      } else {
+        if (drop.falling) playDrip(); // it just hit the bucket
+        drop.mesh.visible = false;
+      }
+      drop.falling = falling;
+    }
+    // Mural ring eases toward its clicked position.
+    disc.rotation.x += (muralTargetRot - disc.rotation.x) * Math.min(1, delta * 6);
+    // Hatch: once the mural aligns, the wheel spins and the leaf swings open.
+    if (puzzleState.isSolved('sync.starmap') && doorProgress < 1) {
+      doorProgress = Math.min(1, doorProgress + delta / 2.4);
+      hatch.wheel.rotation.z = doorProgress * Math.PI * 4;
+      const swing = Math.max(0, (doorProgress - 0.4) / 0.6);
+      hatch.leaf.rotation.y = -swing * 1.9; // creaks inward
     }
     // The sunbeam breathes very slightly.
     sun.intensity = 140 + Math.sin(elapsed * 0.4) * 10;
   };
 
-  return { object: root, update };
+  // ── Interactables ────────────────────────────────────────────────────────
+  const say = (text: string): void => {
+    window.dispatchEvent(new CustomEvent('game:toast', { detail: text }));
+  };
+  const interactables: Interactable[] = [
+    {
+      object: bucket,
+      label: () => 'Rusted bucket — water drips into it in a steady pattern. Listen…',
+      onInteract: () => {
+        ensureAudio();
+        say('You listen: drip · drip · … · drip  (short, short, LONG, short)');
+      },
+    },
+    {
+      object: mural,
+      label: () =>
+        puzzleState.isSolved('sync.starmap')
+          ? `Stone Mural — aligned to ${ZODIAC[muralIndex]}. The hatch is open.`
+          : puzzleState.isAvailable('sync.starmap')
+            ? `Stone Mural — top glyph: ${ZODIAC[muralIndex]}. Click to rotate. Which sign does Beta's star map show?`
+            : 'Stone Mural — the rings are seized. Something on the other side must unlock them.',
+      enabled: () => puzzleState.isAvailable('sync.starmap') && !puzzleState.isSolved('sync.starmap'),
+      onInteract: () => {
+        ensureAudio();
+        muralIndex = (muralIndex + 1) % ZODIAC.length;
+        muralTargetRot += (Math.PI * 2) / ZODIAC.length;
+        playBlip(330);
+        if (muralIndex === TARGET_GLYPH_INDEX) {
+          setTimeout(() => {
+            puzzleState.solve('sync.starmap');
+            playSuccess();
+          }, 500);
+        }
+      },
+    },
+    {
+      object: gears,
+      label: () =>
+        puzzleState.isAvailable('sync.starmap')
+          ? 'Rusted gears — they shudder and mesh with the mural rings.'
+          : 'Rusted gears — seized solid. They drive the mural, if they ever turn again.',
+      onInteract: () => say('The gears grind but hold. They engage the mural’s rings.'),
+    },
+    {
+      object: hatch.group,
+      label: () =>
+        puzzleState.isSolved('sync.starmap')
+          ? 'Hatch to the Grid — open.'
+          : 'Rusted hatch — sealed. The mural mechanism controls it.',
+      onInteract: () => {
+        if (!puzzleState.isSolved('sync.starmap')) say('The wheel won’t budge.');
+      },
+    },
+  ];
+
+  return { object: root, update, interactables };
 }
