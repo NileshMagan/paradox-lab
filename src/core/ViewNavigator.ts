@@ -35,8 +35,10 @@ export class ViewNavigator {
     this.roomIndex = ((index % FACILITY.length) + FACILITY.length) % FACILITY.length;
     const { center, size } = FACILITY[this.roomIndex];
     this.controls.target.set(center.x, center.y + Math.min(1.4, size.y * 0.35), center.z);
+    // Mostly on-axis: a big lateral offset in narrow rooms (the corridor)
+    // shoves the camera into wall-mounted scenery.
     this.camera.position.set(
-      center.x + size.x * 0.3,
+      center.x + size.x * 0.15,
       center.y + size.y * 0.48,
       center.z + size.z * 0.26 + 1.4,
     );

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
 import { concreteTexture, muralTexture } from '@/core/textures';
+import { floraCluster, rustedDoor, vine } from '@/rooms/props';
 import type { RoomDetail } from '@/rooms/types';
 import { RoomId } from '@/types';
 import { buildOctagonShell } from './octagonShell';
@@ -28,41 +29,6 @@ function gearShape(outerR: number, innerR: number, teeth: number): THREE.Shape {
   hub.absarc(0, 0, innerR * 0.35, 0, Math.PI * 2, true);
   shape.holes.push(hub);
   return shape;
-}
-
-/** A clump of glowing mutant mushrooms/pods with its own point light. */
-function floraCluster(color: number, scale: number): { group: THREE.Group; light: THREE.PointLight } {
-  const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0x0c1f16,
-    roughness: 0.7,
-    emissive: new THREE.Color(color),
-    emissiveIntensity: 1.6,
-  });
-  const count = 5 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < count; i++) {
-    const tall = Math.random() > 0.5;
-    const geo = tall
-      ? new THREE.ConeGeometry(0.05 + Math.random() * 0.05, 0.25 + Math.random() * 0.35, 6)
-      : new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 8, 6);
-    const pod = new THREE.Mesh(geo, mat);
-    pod.position.set((Math.random() - 0.5) * 0.6, tall ? 0.18 : 0.08, (Math.random() - 0.5) * 0.6);
-    pod.castShadow = true;
-    group.add(pod);
-  }
-  const light = new THREE.PointLight(color, 2.4, 4.5, 2);
-  light.position.y = 0.35;
-  group.add(light);
-  group.scale.setScalar(scale);
-  return { group, light };
-}
-
-/** Hanging ivy strand as a tube along a sagging curve. */
-function vine(from: THREE.Vector3, to: THREE.Vector3, material: THREE.Material): THREE.Mesh {
-  const mid1 = from.clone().lerp(to, 0.35).add(new THREE.Vector3(0.15, -0.25, 0.1));
-  const mid2 = from.clone().lerp(to, 0.7).add(new THREE.Vector3(-0.1, -0.15, -0.12));
-  const curve = new THREE.CatmullRomCurve3([from, mid1, mid2, to]);
-  return new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.017, 5), material);
 }
 
 /**
@@ -241,20 +207,7 @@ export function buildSyncChamberAlpha(): RoomDetail {
 
   // ── Rusted hatch door (slot: sync.hatch) ─────────────────────────────────
   const hatchPos = slotLocal(RoomId.SyncChamber, 'sync.hatch');
-  const hatch = new THREE.Group();
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(2.1, 3, 0.24), rustDark);
-  frame.position.y = 1.5;
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 0.18), rust);
-  door.position.set(0, 1.3, 0.06);
-  const wheel = new THREE.Group();
-  wheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.045, 8, 20), rustDark));
-  for (let i = 0; i < 3; i++) {
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.05, 0.05), rustDark);
-    spoke.rotation.z = (i * Math.PI) / 3;
-    wheel.add(spoke);
-  }
-  wheel.position.set(0, 1.35, 0.2);
-  hatch.add(frame, door, wheel);
+  const hatch = rustedDoor(rust, rustDark);
   hatch.position.set(hatchPos.x, hatchPos.y, hatchPos.z + 0.15);
   root.add(hatch);
 

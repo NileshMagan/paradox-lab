@@ -29,10 +29,10 @@ src/
 │   └── beta/               # "The Neon Future" renderer
 ├── rooms/
 │   ├── types.ts            # RoomDetail contract (object + per-frame update)
-│   └── sync/               # Room 1 fully dressed for both dimensions
-│       ├── octagonShell.ts # shared octagon geometry (mirrored by construction)
-│       ├── SyncChamberAlpha.ts
-│       └── SyncChamberBeta.ts
+│   ├── props.ts            # shared prop builders (flora, vines, doors, cage, drones)
+│   ├── sync/               # Room 1 — octagonShell.ts + Alpha/Beta dressings
+│   ├── grid/               # Room 2 — corridorShell.ts + Alpha/Beta dressings
+│   └── core/               # Room 3 — domeShell.ts + Alpha/Beta dressings
 ├── entities/              # (planned) props, interactables, the player
 ├── systems/                # cross-cutting runtime systems
 │   ├── audio/              # (planned) per-dimension soundscapes
@@ -52,9 +52,9 @@ returning a `RoomDetail` (a fully built scene graph + optional per-frame
 `update`). Rooms without a detail builder fall back to the generic shell +
 prop-archetype blockout. Room builders MUST take puzzle-prop positions from
 `slotLocal()` (never hard-code them) so Alpha and Beta stay mirrored — the
-octagon shell itself is shared code called with different materials, which
-makes the mirroring structural. The Sync Chamber (R1) is fully dressed in both
-dimensions; R2/R3 are still blockout.
+octagon/corridor/dome shells are shared code called with different materials,
+which makes the mirroring structural. All three rooms are fully dressed in
+both dimensions; the blockout path remains as the fallback for future rooms.
 
 `@/` is aliased to `src/` (see `tsconfig.json` + `vite.config.ts`).
 

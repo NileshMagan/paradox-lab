@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Dimension } from '@/dimensions/Dimension';
+import { buildCoreAlpha } from '@/rooms/core/CoreAlpha';
+import { buildGridAlpha } from '@/rooms/grid/GridAlpha';
 import { buildSyncChamberAlpha } from '@/rooms/sync/SyncChamberAlpha';
 import type { RoomDetail } from '@/rooms/types';
 import { DimensionId, RoomId, type RoomBlueprint } from '@/types';
@@ -8,9 +10,8 @@ import { DimensionId, RoomId, type RoomBlueprint } from '@/types';
  * Dimension Alpha — "The Overgrown Past".
  * Dead power, hazy golden sun shafts through cracked concrete, and pulsing
  * bioluminescent moss in the corners. Everything analog, rusted, damp.
- *
- * NOTE: this is a blockout — materials are flat placeholders. Real concrete /
- * ivy / moss assets and volumetric light shafts come once art lands.
+ * All three rooms are fully dressed; the generic blockout path remains as the
+ * fallback for any future rooms.
  */
 export class AlphaDimension extends Dimension {
   private readonly glowLights: THREE.PointLight[] = [];
@@ -20,8 +21,16 @@ export class AlphaDimension extends Dimension {
   }
 
   protected override buildRoomDetail(room: RoomBlueprint): RoomDetail | null {
-    if (room.id === RoomId.SyncChamber) return buildSyncChamberAlpha();
-    return null;
+    switch (room.id) {
+      case RoomId.SyncChamber:
+        return buildSyncChamberAlpha();
+      case RoomId.Grid:
+        return buildGridAlpha();
+      case RoomId.ParadoxCore:
+        return buildCoreAlpha();
+      default:
+        return null;
+    }
   }
 
   protected addBaseLighting(): void {

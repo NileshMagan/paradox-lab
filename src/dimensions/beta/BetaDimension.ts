@@ -1,41 +1,40 @@
 import * as THREE from 'three';
-import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { Dimension } from '@/dimensions/Dimension';
+import { buildCoreBeta } from '@/rooms/core/CoreBeta';
+import { buildGridBeta } from '@/rooms/grid/GridBeta';
 import { buildSyncChamberBeta } from '@/rooms/sync/SyncChamberBeta';
 import type { RoomDetail } from '@/rooms/types';
 import { DimensionId, RoomId, type RoomBlueprint } from '@/types';
-
-// RectAreaLight contributes nothing until its BRDF LUT uniforms are loaded.
-RectAreaLightUniformsLib.init();
 
 /**
  * Dimension Beta — "The Neon Future".
  * Stark, shadowless LED panels; seamless brushed steel and white resin floors.
  * On lockdown it drops to emergency amber + electric-blue holographics.
- *
- * NOTE: blockout only — real steel/carbon/resin PBR materials, holo shaders,
- * and the ceiling-track scanner drones come once art lands.
+ * All three rooms are fully dressed; the generic blockout path remains as the
+ * fallback for any future rooms.
  */
 export class BetaDimension extends Dimension {
-  private readonly panelLight: THREE.RectAreaLight;
-
   constructor() {
     super(DimensionId.Beta);
-    this.panelLight = new THREE.RectAreaLight(this.theme.keyLight.color, this.theme.keyLight.intensity, 6, 6);
   }
 
   protected override buildRoomDetail(room: RoomBlueprint): RoomDetail | null {
-    if (room.id === RoomId.SyncChamber) return buildSyncChamberBeta();
-    return null;
+    switch (room.id) {
+      case RoomId.SyncChamber:
+        return buildSyncChamberBeta();
+      case RoomId.Grid:
+        return buildGridBeta();
+      case RoomId.ParadoxCore:
+        return buildCoreBeta();
+      default:
+        return null;
+    }
   }
 
   protected addBaseLighting(): void {
     // Bright, near-shadowless fill to sell the sterile clinical feel —
     // kept below full blast so the cyan trim and holographics still pop.
     this.scene.add(new THREE.AmbientLight(0xdfe9ff, 0.7));
-    this.panelLight.position.set(0, 6, -13);
-    this.panelLight.lookAt(0, 0, -13);
-    this.scene.add(this.panelLight);
   }
 
   protected buildRoomShell(room: RoomBlueprint, group: THREE.Group): void {

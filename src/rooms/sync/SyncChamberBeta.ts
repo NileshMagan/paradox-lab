@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
-import { betaFloorTextures, HoloScreen, labelTexture, muralTexture, starmapTexture, steelTexture } from '@/core/textures';
+import { betaFloorTextures, HoloScreen, muralTexture, starmapTexture, steelTexture } from '@/core/textures';
+import { sciFiDoor } from '@/rooms/props';
 import type { RoomDetail } from '@/rooms/types';
 import { RoomId } from '@/types';
 import { buildOctagonShell } from './octagonShell';
@@ -8,19 +9,6 @@ import { buildOctagonShell } from './octagonShell';
 const APOTHEM = 4;
 const HEIGHT = 4;
 const CYAN = 0x20d5ff;
-
-/** Extruded octagon slab (the Beta door leaf/frame shape). */
-function octagonSlab(radius: number, depth: number, material: THREE.Material): THREE.Mesh {
-  const shape = new THREE.Shape();
-  for (let k = 0; k <= 8; k++) {
-    const a = (k * Math.PI) / 4 + Math.PI / 8;
-    const x = Math.cos(a) * radius;
-    const y = Math.sin(a) * radius;
-    if (k === 0) shape.moveTo(x, y);
-    else shape.lineTo(x, y);
-  }
-  return new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }), material);
-}
 
 /**
  * Room 1, Dimension Beta — "The Neon Future" Sync Chamber.
@@ -198,23 +186,7 @@ export function buildSyncChamberBeta(): RoomDetail {
 
   // ── Octagonal R2 door with lockdown bar (slot: sync.hatch) ───────────────
   const hatchPos = slotLocal(RoomId.SyncChamber, 'sync.hatch');
-  const doorGroup = new THREE.Group();
-  const doorFrame = octagonSlab(1.45, 0.14, black);
-  const doorLeaf = octagonSlab(1.25, 0.1, steel);
-  doorLeaf.position.z = 0.12;
-  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.3, 0.04), black);
-  seam.position.z = 0.24;
-  const label = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 0.4),
-    new THREE.MeshBasicMaterial({ map: labelTexture('R2'), transparent: true }),
-  );
-  label.position.set(0.55, 0.1, 0.25);
-  const lockBar = new THREE.Mesh(
-    new THREE.BoxGeometry(1.3, 0.12, 0.06),
-    new THREE.MeshBasicMaterial({ color: 0xff2b3a }),
-  );
-  lockBar.position.set(0, 1.7, 0.22);
-  doorGroup.add(doorFrame, doorLeaf, seam, label, lockBar);
+  const { group: doorGroup, lockBar } = sciFiDoor(steel, black, 'R2');
   doorGroup.position.set(hatchPos.x, 1.55, hatchPos.z + 0.18);
   root.add(doorGroup);
 

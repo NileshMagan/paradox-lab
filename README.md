@@ -45,17 +45,26 @@ URL params for deep links: `?dim=alpha|beta`, `?room=1..3`, `?view=overview`.
 
 ## Status
 
-**Room 1 (Sync Chambers) is fully dressed in both dimensions**, matching the
-reference art: Alpha has god-rays through a cracked skylight, drifting dust
-motes, the carved zodiac mural, rusted gears, the drip-and-bucket, pulsing
-bioluminescent flora, ivy, rubble and puddles; Beta has the LED ceiling,
-glowing cyan floor web, an animated holographic audio analyzer, the artifact
-pedestal, star-map console, octagonal R2 door with blinking lockdown bar and a
-sweeping amber beacon. All scenery is procedural (canvas textures + primitive
-geometry) — no external assets. Orbit controls let you look around.
+**The full set is dressed — all three rooms, both dimensions**, matching the
+reference art in `docs/reference/`. All scenery is procedural (canvas textures
++ primitive geometry), no external assets:
 
-R2/R3 are still blockout with puzzle prop slots placed from the finalized
-design. Not yet built: puzzle logic, audio, and the multiplayer/voice
+- **R1 Sync Chambers** — Alpha: god-rays, dust motes, zodiac stone mural,
+  rusted gears, drip-and-bucket, bioluminescent flora. Beta: LED ceiling, cyan
+  floor web, animated holo audio analyzer, artifact pedestal, star-map
+  console, lockdown door, amber beacon.
+- **R2 Botanical/Cyber Grid** — Alpha: greenhouse gable roof, mutated flora
+  wall, soil/pH bench with test strips, rusted pipes + valves, overgrown
+  server cabinets, hanging CRTs, floor roots. Beta: laser-grid maze
+  (crimson/blue, animated), server racks with LED faces, chemical analyzer
+  kiosk, patrolling ceiling-track drones with red scan cones.
+- **R3 Paradox Core** — Alpha: ruined dome with oculus god-rays over the
+  black-abyss pit, suspended reactor cage, whiteboard equations, heavy mirrors
+  on tracks, rusted manual lever. Beta: live reactor beam holding the same
+  cage, time-dilation charts with a 2× countdown, Core Control Terminal,
+  sleek lever, orbiting drones.
+
+Not yet built: puzzle logic/interaction, audio, and the multiplayer/voice
 networking layer (see ARCHITECTURE.md).
 
 ## Current structure
