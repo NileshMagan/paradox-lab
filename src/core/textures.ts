@@ -509,8 +509,14 @@ export function whiteboardTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/** Beta's chemical-analyzer kiosk screen (Grid room, puzzle grid.chemical). */
-export function chemScreenTexture(): THREE.CanvasTexture {
+/**
+ * Beta's chemical-analyzer kiosk screen (Grid room, puzzle grid.chemical).
+ * Regenerated whenever Beta cycles the candidate compound; `state` drives the
+ * status lines (locked → selecting → confirmed).
+ */
+export function chemScreenTexture(
+  state: { candidate: string | null; confirmed: boolean } = { candidate: null, confirmed: false },
+): THREE.CanvasTexture {
   const [canvas, ctx] = makeCanvas(512, 384);
   ctx.fillStyle = '#041018';
   ctx.fillRect(0, 0, 512, 384);
@@ -531,8 +537,17 @@ export function chemScreenTexture(): THREE.CanvasTexture {
   ctx.font = '18px monospace';
   for (let i = 0; i <= 14; i += 2) ctx.fillText(String(i), 30 + (i / 14) * 440, 145);
   ctx.font = '22px monospace';
-  ctx.fillText('BASE CODE: [ ?? ?? ?? ]', 30, 210);
-  ctx.fillText('AWAITING FIELD SAMPLE…', 30, 250);
+  if (state.confirmed) {
+    ctx.fillStyle = '#7cf9c9';
+    ctx.fillText(`BASE CODE: [ ${state.candidate ?? '??'} ] ✓`, 30, 210);
+    ctx.fillText('LASER GRID SPECTRUM UNLOCKED', 30, 250);
+  } else if (state.candidate) {
+    ctx.fillText(`CANDIDATE: [ ${state.candidate} ]`, 30, 210);
+    ctx.fillText('CLICK TO CYCLE COMPOUNDS', 30, 250);
+  } else {
+    ctx.fillText('BASE CODE: [ ?? ?? ?? ]', 30, 210);
+    ctx.fillText('AWAITING FIELD SAMPLE…', 30, 250);
+  }
   ctx.fillStyle = 'rgba(47,212,255,0.55)';
   ctx.font = '16px monospace';
   ctx.fillText('input via voice-link from Dimension Alpha', 30, 340);
@@ -571,6 +586,12 @@ export class ChartScreen {
   readonly texture: THREE.CanvasTexture;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+
+  /** Anchor-code input state — the core.anchor puzzle drives these. */
+  anchorCandidate: string | null = null;
+  anchorAccepted = false;
+  /** Bottom directive line; updated as the core puzzles progress. */
+  directive = 'DERIVE ANCHOR CONSTANT — CROSS-CHECK ALPHA’S WHITEBOARD';
 
   constructor(
     private readonly w = 512,
@@ -624,9 +645,21 @@ export class ChartScreen {
     ctx.fillStyle = remaining < 60 && Math.sin(elapsed * 8) > 0 ? '#ff5468' : '#ffb85c';
     ctx.font = 'bold 44px monospace';
     ctx.fillText(`CORE BREACH T-${m}:${s}.${d}`, 18, 52);
+    // Anchor-code readout (core.anchor input).
+    ctx.font = '24px monospace';
+    if (this.anchorAccepted) {
+      ctx.fillStyle = '#7cf9c9';
+      ctx.fillText(`ANCHOR ≡ ${this.anchorCandidate} ✓ LOCKED`, 18, 92);
+    } else if (this.anchorCandidate) {
+      ctx.fillStyle = Math.sin(elapsed * 3.5) > 0 ? '#c9f6ff' : 'rgba(201,246,255,0.4)';
+      ctx.fillText(`ANCHOR CANDIDATE: ${this.anchorCandidate} ?`, 18, 92);
+    } else {
+      ctx.fillStyle = 'rgba(201,246,255,0.5)';
+      ctx.fillText('ANCHOR ≡ __ . _', 18, 92);
+    }
     ctx.fillStyle = '#8fecff';
     ctx.font = '18px monospace';
-    ctx.fillText('TEMPORAL DILATION ×2.00 — ALIGN MIRRORS (ALPHA SIDE)', 18, h - 16);
+    ctx.fillText(`TEMPORAL DILATION ×2.00 — ${this.directive}`, 18, h - 16);
     this.texture.needsUpdate = true;
   }
 }

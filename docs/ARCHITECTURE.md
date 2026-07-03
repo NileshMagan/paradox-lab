@@ -35,14 +35,21 @@ src/
 │   └── core/               # Room 3 — domeShell.ts + Alpha/Beta dressings
 ├── entities/              # (planned) props, interactables, the player
 ├── systems/                # cross-cutting runtime systems
-│   ├── audio/              # (planned) per-dimension soundscapes
-│   ├── interaction/        # (planned) raycast pick / use
-│   └── puzzle/             # (planned) puzzle graph + cross-dimension effects
+│   ├── interaction/        # Interactor: pointer raycast hover/click on hotspots
+│   └── puzzle/
+│       ├── state.ts        # puzzle dependency graph + solved-state store
+│       └── session.ts      # live cross-dimension channel (laser colour, valves,
+│                           #   mirrors, lever timing) — local server stand-in
 ├── net/                    # (planned) multiplayer — see below
 ├── ui/
-│   └── devHud.ts           # dev-only overlay
+│   ├── devHud.ts           # dev-only overlay
+│   ├── interactionHud.ts   # hover labels + gameplay toasts + solve banners
+│   └── victory.ts          # the "timelines merged" escape ending
 └── types/
     └── index.ts            # shared domain types (DimensionId, RoomBlueprint…)
+
+scripts/
+└── walkthrough.mjs         # scripted E2E playthrough of all 8 puzzles + video
 ```
 
 ### Detailed rooms vs. blockout
@@ -68,6 +75,22 @@ both dimensions; the blockout path remains as the fallback for future rooms.
    real game the networking layer assigns exactly one dimension per player.
 4. `engine.onUpdate` drives the active dimension's `update(delta, elapsed)` for
    animated elements (bioluminescence pulse, drones, sirens…).
+5. Rooms register `Interactable` hotspots; the `Interactor` raycasts the
+   pointer against the active dimension's set. Puzzle solves flow through
+   `puzzleState` (the dependency graph) and mid-puzzle cross-dimension state
+   flows through `session` — both are module singletons that will become
+   server-replicated state (see the multiplayer plan below). Rooms *poll* both
+   in their `update`, so a state change in one dimension is visible in the
+   other the same frame (e.g. Beta's laser colour → Alpha's blooms).
+
+## Testing the puzzle chain
+
+`npm run test:e2e` boots Vite + headless Chrome and plays the entire game
+through the `window.__qs` dev bridge (defined in `main.ts`), asserting each of
+the 8 puzzles solves in dependency order. `npm run walkthrough` is the same
+run with cinematic pacing, and records `docs/walkthrough.mp4`. URL params
+(`?dim= ?room= ?view= ?solve=`) let you jump into any state manually — note
+`?solve=` applies in order, so list prerequisites first.
 
 ## Extending it
 

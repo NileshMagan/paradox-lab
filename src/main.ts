@@ -6,10 +6,12 @@ import type { Dimension } from '@/dimensions/Dimension';
 import { AlphaDimension } from '@/dimensions/alpha/AlphaDimension';
 import { BetaDimension } from '@/dimensions/beta/BetaDimension';
 import { Interactor } from '@/systems/interaction/Interactor';
+import { session } from '@/systems/puzzle/session';
 import { puzzleState, type PuzzleId } from '@/systems/puzzle/state';
 import { DimensionId } from '@/types';
 import { setHoverLabel } from '@/ui/interactionHud';
 import '@/ui/devHud';
+import '@/ui/victory';
 
 /**
  * Single-client bootstrap. Dev navigation:
@@ -66,6 +68,59 @@ engine.onUpdate((delta, elapsed) => {
   interactor.update();
   dimensions[active].update(delta, elapsed);
 });
+
+const ALL_PUZZLES: readonly PuzzleId[] = [
+  'sync.frequency',
+  'sync.starmap',
+  'grid.chemical',
+  'grid.bloom',
+  'grid.server',
+  'core.anchor',
+  'core.mirrors',
+  'core.lever',
+];
+
+/**
+ * Dev/test bridge: lets the scripted walkthrough (scripts/walkthrough.mjs)
+ * and manual console poking drive the SAME interactables the mouse raycast
+ * hits, without needing pixel coordinates for 3D objects. Not part of the
+ * shipped game loop — nothing in-game reads it.
+ */
+interface QuantumSplitDebug {
+  activate: (id: DimensionId) => void;
+  focusRoom: (index: number) => void;
+  overview: () => void;
+  /** Hover-labels of the active dimension's hotspots (🔒 when disabled). */
+  hotspots: () => string[];
+  /** Click the first enabled hotspot whose label matches. True if it fired. */
+  interact: (labelSubstring: string) => boolean;
+  solved: () => PuzzleId[];
+  session: typeof session;
+}
+declare global {
+  interface Window {
+    __qs?: QuantumSplitDebug;
+  }
+}
+window.__qs = {
+  activate,
+  focusRoom: (index) => navigator.focusRoom(index),
+  overview: () => navigator.toggleOverview(),
+  hotspots: () =>
+    dimensions[active].interactables.map(
+      (i) => `${(i.enabled?.() ?? true) ? '' : '🔒 '}${i.label()}`,
+    ),
+  interact: (labelSubstring) => {
+    const target = dimensions[active].interactables.find(
+      (i) => i.label().toLowerCase().includes(labelSubstring.toLowerCase()) && (i.enabled?.() ?? true),
+    );
+    if (!target) return false;
+    target.onInteract();
+    return true;
+  },
+  solved: () => ALL_PUZZLES.filter((id) => puzzleState.isSolved(id)),
+  session,
+};
 
 window.addEventListener('keydown', (e) => {
   switch (e.key) {

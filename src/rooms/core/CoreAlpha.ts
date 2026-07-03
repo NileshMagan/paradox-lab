@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
+import { MIRROR_COUNT, TARGET_MIRRORS } from '@/config/puzzles';
+import { ensureAudio, playBlip, playFail } from '@/core/audio';
 import { concreteTexture, whiteboardTexture } from '@/core/textures';
 import { floraCluster, hangingCage, rustedDoor, vine } from '@/rooms/props';
-import type { RoomDetail } from '@/rooms/types';
-import { RoomId } from '@/types';
+import type { Interactable, RoomDetail } from '@/rooms/types';
+import { session } from '@/systems/puzzle/session';
+import { puzzleState } from '@/systems/puzzle/state';
+import { DimensionId, RoomId } from '@/types';
 import { buildDomeShell } from './domeShell';
 
 const R = 10;
@@ -103,6 +107,7 @@ export function buildCoreAlpha(): RoomDetail {
   // ── Whiteboards (puzzle: core.anchor) ────────────────────────────────────
   const eqPos = slotLocal(RoomId.ParadoxCore, 'core.equations');
   const boardFrame = new THREE.MeshStandardMaterial({ color: 0x4a4238, roughness: 0.9 });
+  const boards = new THREE.Group();
   for (let i = 0; i < 3; i++) {
     const board = new THREE.Group();
     const face = new THREE.Mesh(
@@ -121,40 +126,67 @@ export function buildCoreAlpha(): RoomDetail {
     board.position.set(eqPos.x + i * 1.6, 0, eqPos.z - i * 0.7);
     board.rotation.y = 0.9 - i * 0.35; // fanned around, facing the pit
     board.rotation.z = (i - 1) * 0.03; // slightly slumped
-    root.add(board);
+    boards.add(board);
   }
+  root.add(boards);
 
   // ── Heavy mirrors on rusted tracks (puzzle: core.mirrors) ────────────────
+  // MIRROR_COUNT units in a row; Beta reads out WHICH of them to align.
   const mirrorsPos = slotLocal(RoomId.ParadoxCore, 'core.mirrors');
   const rust = new THREE.MeshStandardMaterial({ color: 0x7a4a26, roughness: 0.85, metalness: 0.45 });
   const rustDark = new THREE.MeshStandardMaterial({ color: 0x53331c, roughness: 0.9, metalness: 0.4 });
   const track = new THREE.Mesh(new THREE.BoxGeometry(7, 0.12, 0.55), rustDark);
-  track.position.set(mirrorsPos.x + 1.5, 0.06, mirrorsPos.z);
+  track.position.set(mirrorsPos.x + 2.6, 0.06, mirrorsPos.z);
   root.add(track);
-  for (let i = 0; i < 2; i++) {
+  type MirrorUnit = { unit: THREE.Group; head: THREE.Group; mat: THREE.MeshStandardMaterial; restYaw: number };
+  const mirrorUnits: MirrorUnit[] = [];
+  for (let i = 0; i < MIRROR_COUNT; i++) {
     const unit = new THREE.Group();
     const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.8), rust);
     base.position.y = 0.35;
     const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), rustDark);
     pillar.position.y = 0.9;
-    const mirror = new THREE.Mesh(
-      new THREE.CircleGeometry(0.55, 24),
-      new THREE.MeshStandardMaterial({
-        color: 0xbcc8c8,
-        roughness: 0.08,
-        metalness: 0.9,
-        side: THREE.DoubleSide,
-      }),
-    );
-    mirror.position.y = 1.45;
-    mirror.rotation.set(-0.5, 0.6 + i * 0.8, 0);
+    // The mirror + rim pivot together on a head group so alignment is one yaw.
+    const head = new THREE.Group();
+    const mirrorMat = new THREE.MeshStandardMaterial({
+      color: 0xbcc8c8,
+      roughness: 0.08,
+      metalness: 0.9,
+      side: THREE.DoubleSide,
+    });
+    const mirror = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), mirrorMat);
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 8, 24), rustDark);
-    rim.position.copy(mirror.position);
-    rim.rotation.copy(mirror.rotation);
-    unit.add(base, pillar, mirror, rim);
-    unit.position.set(mirrorsPos.x + i * 2.6, 0, mirrorsPos.z);
+    head.add(mirror, rim);
+    head.position.y = 1.45;
+    head.rotation.set(-0.5, 0.6 + (i % 3) * 0.8, 0); // slumped at rest, all askew
+    unit.add(base, pillar, head);
+    unit.position.set(mirrorsPos.x + i * 1.3, 0, mirrorsPos.z);
     unit.castShadow = true;
     root.add(unit);
+    mirrorUnits.push({ unit, head, mat: mirrorMat, restYaw: head.rotation.y });
+  }
+  // Energy beams from the target mirrors to the reactor — hidden until the
+  // alignment lands, then they channel across the pit.
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0x9fe9ff,
+    transparent: true,
+    opacity: 0.0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const energyBeams: THREE.Mesh[] = [];
+  for (const t of TARGET_MIRRORS) {
+    const from = new THREE.Vector3(mirrorsPos.x + t * 1.3, 1.45, mirrorsPos.z);
+    const to = new THREE.Vector3(0, 3.2, 0); // the suspended cage over the pit
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, from.distanceTo(to), 8, 1, true),
+      beamMat,
+    );
+    beam.position.copy(from).lerp(to, 0.5);
+    beam.lookAt(to);
+    beam.rotateX(Math.PI / 2); // cylinder axis onto the from→to line
+    root.add(beam);
+    energyBeams.push(beam);
   }
 
   // ── Manual lever (puzzle: core.lever) ────────────────────────────────────
@@ -225,10 +257,11 @@ export function buildCoreAlpha(): RoomDetail {
     rock.castShadow = true;
     root.add(rock);
   }
-  const door = rustedDoor(rust, rustDark).group;
-  door.position.set(0, 0, 9.55);
-  door.rotation.y = Math.PI;
-  root.add(door);
+  const door = rustedDoor(rust, rustDark);
+  door.group.position.set(0, 0, 9.55);
+  door.group.rotation.y = Math.PI;
+  root.add(door.group);
+  let doorProgress = 0;
 
   // ── Dust in the god-rays ─────────────────────────────────────────────────
   const DUST = 320;
@@ -255,6 +288,10 @@ export function buildCoreAlpha(): RoomDetail {
   );
   root.add(dust);
 
+  const say = (text: string): void => {
+    window.dispatchEvent(new CustomEvent('game:toast', { detail: text }));
+  };
+
   const update = (delta: number, elapsed: number): void => {
     floraLights.forEach((light, i) => {
       light.intensity = 2.0 + Math.sin(elapsed * 1.05 + floraPhases[i]) * 1.1;
@@ -262,10 +299,42 @@ export function buildCoreAlpha(): RoomDetail {
     rimLights.forEach((light, i) => {
       light.intensity = 2.2 + Math.sin(elapsed * 0.9 + i * 1.7) * 1.0;
     });
-    // The dormant crystal barely breathes.
-    (crystal.material as THREE.MeshStandardMaterial).emissiveIntensity =
-      1.6 + Math.sin(elapsed * 0.7) * 0.7;
+    // The dormant crystal barely breathes — until the mirrors feed it.
+    const charged = puzzleState.isSolved('core.mirrors');
+    (crystal.material as THREE.MeshStandardMaterial).emissiveIntensity = charged
+      ? 4 + Math.sin(elapsed * 3) * 1.5
+      : 1.6 + Math.sin(elapsed * 0.7) * 0.7;
     cage.rotation.y = Math.sin(elapsed * 0.18) * 0.12; // slow sway on its cable
+    // Mirror heads ease toward the pit when aligned, slump back otherwise.
+    mirrorUnits.forEach((m, i) => {
+      const aligned = session.mirrorAligned(i);
+      // Yaw the head toward the reactor (unit sits west of the pit, so the
+      // world-space bearing to the origin is what the head turns to).
+      const targetYaw = aligned
+        ? Math.atan2(-m.unit.position.x, -m.unit.position.z)
+        : m.restYaw;
+      m.head.rotation.y += (targetYaw - m.head.rotation.y) * Math.min(1, delta * 3);
+      m.head.rotation.x += ((aligned ? -0.15 : -0.5) - m.head.rotation.x) * Math.min(1, delta * 3);
+      m.mat.emissive.setHex(aligned ? 0x2ee6d6 : 0x000000);
+      m.mat.emissiveIntensity = aligned ? 0.5 : 0;
+    });
+    // Channelled energy fades in once the alignment lands.
+    beamMat.opacity += ((charged ? 0.5 : 0) - beamMat.opacity) * Math.min(1, delta * 2);
+    for (const beam of energyBeams) beam.visible = beamMat.opacity > 0.01;
+    // Lever arm follows the shared pull state (springs back on a lone pull).
+    const pulled = session.leverPulled(DimensionId.Alpha);
+    arm.rotation.x += ((pulled ? -0.6 : 0.5) - arm.rotation.x) * Math.min(1, delta * 8);
+    const expired = session.expireLonePull(performance.now() / 1000);
+    if (expired) {
+      playFail();
+      say('The lever springs back — you must pull at the SAME moment. Count Beta down!');
+    }
+    // The hatch from R2 creaks open once Beta's hack lands.
+    if (puzzleState.isSolved('grid.server') && doorProgress < 1) {
+      doorProgress = Math.min(1, doorProgress + delta / 2.4);
+      door.wheel.rotation.z = doorProgress * Math.PI * 4;
+      door.leaf.rotation.y = -Math.max(0, (doorProgress - 0.4) / 0.6) * 1.9;
+    }
     const pos = dustGeo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < DUST; i++) {
       let y = pos.getY(i) + delta * 0.05;
@@ -275,5 +344,71 @@ export function buildCoreAlpha(): RoomDetail {
     pos.needsUpdate = true;
   };
 
-  return { object: root, update };
+  // ── Interactables ────────────────────────────────────────────────────────
+  const interactables: Interactable[] = [
+    {
+      object: boards,
+      label: () =>
+        puzzleState.isAvailable('core.anchor')
+          ? 'Faded whiteboards — decades-old equations. Click to read the legible fragments to Beta.'
+          : 'Faded whiteboards — too dark to read while the room is sealed.',
+      enabled: () => puzzleState.isAvailable('core.anchor'),
+      onInteract: () => {
+        ensureAudio();
+        playBlip(440);
+        say('You make out: “Δt′ = γ·Δt … ANCHOR ≡ 42.7 … MIRRORS 2 & 5 !! … DO NOT DESYNC”');
+      },
+    },
+    // The mirrors are individual hotspots — Beta calls out numbers, Alpha
+    // clicks exactly those, so hover must show WHICH mirror this is.
+    ...mirrorUnits.map((m, i): Interactable => ({
+      object: m.unit,
+      label: () => {
+        if (!puzzleState.isAvailable('core.mirrors'))
+          return `Heavy mirror ${i + 1} — the winch is powerless until the anchor code locks.`;
+        if (puzzleState.isSolved('core.mirrors'))
+          return `Heavy mirror ${i + 1} — ${session.mirrorAligned(i) ? 'channelling energy across the pit.' : 'idle.'}`;
+        return `Heavy mirror ${i + 1} of ${MIRROR_COUNT} — ${session.mirrorAligned(i) ? 'ALIGNED. Click to slump it back.' : 'askew. Click to winch it toward the core.'} Ask Beta which mirrors the charts call for.`;
+      },
+      enabled: () => puzzleState.isAvailable('core.mirrors') && !puzzleState.isSolved('core.mirrors'),
+      onInteract: () => {
+        ensureAudio();
+        playBlip(330 + i * 40);
+        session.toggleMirror(i);
+        if (!puzzleState.isSolved('core.mirrors') && session.alignedMirrors.size > TARGET_MIRRORS.length) {
+          say('The beam scatters — too many mirrors are up. Some must slump back.');
+        }
+      },
+    })),
+    {
+      object: lever,
+      label: () => {
+        if (puzzleState.isSolved('core.lever')) return 'The lever is down. The timelines are merging…';
+        if (!puzzleState.isAvailable('core.lever'))
+          return 'Manual lever — dead. The mirrors must channel the core’s energy first.';
+        return session.leverPulled(DimensionId.Alpha)
+          ? 'LEVER PULLED — Beta must pull NOW!'
+          : 'Manual Lever — count Beta down over voice: “3, 2, 1, PULL!”';
+      },
+      enabled: () =>
+        puzzleState.isAvailable('core.lever') &&
+        !puzzleState.isSolved('core.lever') &&
+        !session.leverPulled(DimensionId.Alpha),
+      onInteract: () => {
+        ensureAudio();
+        playBlip(220);
+        session.pullLever(DimensionId.Alpha, performance.now() / 1000);
+      },
+    },
+    {
+      object: door.group,
+      label: () =>
+        puzzleState.isSolved('grid.server')
+          ? 'Hatch to the Grid — open.'
+          : 'Rusted hatch — sealed from the Grid side.',
+      onInteract: () => {},
+    },
+  ];
+
+  return { object: root, update, interactables };
 }

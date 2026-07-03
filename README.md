@@ -35,6 +35,8 @@ URL params for deep links: `?dim=alpha|beta`, `?room=1..3`, `?view=overview`.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint over `src/` |
 | `npm run format` | Prettier write |
+| `npm run test:e2e` | Headless playthrough of **all 8 puzzles**, asserts each solves |
+| `npm run walkthrough` | Same playthrough, cinematically paced, records `docs/walkthrough.mp4` |
 
 ## Project docs
 
@@ -64,37 +66,53 @@ reference art in `docs/reference/`. All scenery is procedural (canvas textures
   cage, time-dilation charts with a 2× countdown, Core Control Terminal,
   sleek lever, orbiting drones.
 
-**The first puzzle loop is playable** (single-client, using the `1`/`2`
-dimension toggle to act as both players):
+**The whole escape room is playable end-to-end** (single-client, using the
+`1`/`2` dimension toggle to act as both players). All 8 puzzles from the
+dependency graph in DESIGN.md §7, in order:
 
-1. **Alpha** — the bucket drips a rhythm (short · short · long · short), with
-   sound. Click the bucket for a hint.
-2. **Beta** (`2`) — click the **Audio Analyzer** to arm it, then tap the
-   rhythm on it (5 taps, any tempo — intervals are matched scale-free).
-   Success decrypts the **Star Map**: *SECTOR LEO*.
-3. **Alpha** (`1`) — the mural rings unjam. Click the **Stone Mural** to
-   rotate; align **♌ Leo** under the notch.
-4. Both R1 doors release — Alpha's hatch wheel spins and creaks open, Beta's
-   lockdown bar turns green and the leaf slides up.
+1. **`sync.frequency`** — Alpha's bucket drips a rhythm (short · short · long
+   · short). Beta arms the **Audio Analyzer** and taps it back (5 taps, any
+   tempo — intervals are matched scale-free). Decrypts the **Star Map**.
+2. **`sync.starmap`** — Beta reads *SECTOR LEO*; Alpha clicks the **Stone
+   Mural** to align **♌** under the notch. Both R1 doors release.
+3. **`grid.chemical`** — Alpha runs the **soil bench** strips (pH 1, sulphur…);
+   Beta cycles the **Chemical Analyzer** to the matching compound (H₂SO₄).
+4. **`grid.bloom`** — Beta clicks the **laser grid** to shift its spectrum;
+   Alpha's **flora wall blooms the same colour in real time**. When the blooms
+   open, Alpha clicks the wall to wave Beta through — three zones, safe path
+   BLUE → CRIMSON → BLUE.
+5. **`grid.server`** — Alpha opens 3 **coolant valves**; Beta runs the
+   **server-rack hack**. The R3 doors release in both dimensions.
+6. **`core.anchor`** — Alpha reads the **whiteboards** (*ANCHOR ≡ 42.7*); Beta
+   cycles the **dilation charts** to lock the constant.
+7. **`core.mirrors`** — Beta's terminal calls for **mirrors 2 & 5**; Alpha
+   winches exactly those two of the five **heavy mirrors** toward the core.
+   Energy channels across the pit.
+8. **`core.lever`** — both **levers** must be pulled within 6 s of each other
+   ("3, 2, 1, PULL!"). A lone pull springs back. Success = the timelines
+   merge and the victory card plays.
 
-Hover anything glowing for a label; toasts narrate progress. Dev param
-`?solve=sync.frequency,sync.starmap` pre-solves for testing.
+Hover anything glowing for a label (🔒 = locked); toasts narrate progress.
+Dev param `?solve=` pre-solves puzzles in the order listed. The scripted
+walkthrough (`npm run walkthrough`) plays all of this and records a video.
 
-Not yet built: puzzles for R2/R3 (props are dressed and labelled, logic
-pending), full ambient audio, and the multiplayer/voice networking layer —
-puzzle state currently lives in a client-side store shaped to move
-server-side (see ARCHITECTURE.md).
+Not yet built: full ambient audio beds and the multiplayer/voice networking
+layer — puzzle state currently lives in client-side stores
+(`systems/puzzle/state.ts` + `session.ts`) shaped to move server-side (see
+ARCHITECTURE.md).
 
 ## Current structure
 
 ```
 src/
-├── main.ts            bootstrap + dev dimension toggle
+├── main.ts            bootstrap + dev dimension toggle + __qs test bridge
 ├── core/Engine.ts     renderer, camera, resize, loop
-├── config/            constants (art direction) + facility.ts (the footprint)
+├── config/            constants + puzzles.ts (tuning) + facility.ts (the footprint)
 ├── dimensions/        Dimension base + alpha/ + beta/ renderers
-├── systems/           audio · interaction · puzzle (planned)
+├── rooms/             hand-dressed rooms (shells + props + interactables)
+├── systems/           interaction (raycast) · puzzle (graph + live session)
 ├── net/               multiplayer (planned)
-├── ui/devHud.ts       dev overlay
+├── ui/                dev overlay · hover/toast HUD · victory ending
 └── types/             shared domain types
+scripts/walkthrough.mjs  scripted E2E playthrough + video recorder
 ```

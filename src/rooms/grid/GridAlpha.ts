@@ -1,10 +1,20 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
+import { BLOOM_SAFE_PATH, SOIL_READINGS, VALVE_COUNT } from '@/config/puzzles';
+import { ensureAudio, playBlip, playFail, playSuccess } from '@/core/audio';
 import { concreteTexture } from '@/core/textures';
 import { floraCluster, rustedDoor, vine } from '@/rooms/props';
-import type { RoomDetail } from '@/rooms/types';
+import type { Interactable, RoomDetail } from '@/rooms/types';
+import { session } from '@/systems/puzzle/session';
+import { puzzleState } from '@/systems/puzzle/state';
 import { RoomId } from '@/types';
 import { buildCorridorShell } from './corridorShell';
+
+/** Laser emission → what Alpha's blooms glow (the cross-dimension mirror). */
+const LASER_TO_BLOOM: Record<'crimson' | 'blue', number> = {
+  crimson: 0xff2b3a,
+  blue: 0x20d5ff,
+};
 
 const W = 6;
 const H = 4;
@@ -104,23 +114,19 @@ export function buildGridAlpha(): RoomDetail {
   const vineWall = new THREE.Mesh(new THREE.BoxGeometry(0.45, H - 0.4, 12), vineWallMat);
   vineWall.position.set(fieldPos.x + 0.5, (H - 0.4) / 2, fieldPos.z);
   root.add(vineWall);
-  // Blooms studding the vine wall — these mirror Beta's laser colours.
+  // Blooms studding the vine wall — these mirror Beta's laser colours LIVE:
+  // when Beta shifts the grid's emission, every bloom here follows (the
+  // flagship cross-dimension effect, docs/DESIGN.md §5).
   const bloomLights: THREE.PointLight[] = [];
   const bloomPhases: number[] = [];
-  const bloomMats = [0x2ee6d6, 0xe344c4, 0x39f0a0].map(
-    (color) =>
-      new THREE.MeshStandardMaterial({
-        color: 0x11241a,
-        roughness: 0.7,
-        emissive: new THREE.Color(color),
-        emissiveIntensity: 1.5,
-      }),
-  );
+  const bloomMat = new THREE.MeshStandardMaterial({
+    color: 0x11241a,
+    roughness: 0.7,
+    emissive: new THREE.Color(0x2ee6d6),
+    emissiveIntensity: 1.5,
+  });
   for (let i = 0; i < 22; i++) {
-    const bloom = new THREE.Mesh(
-      new THREE.SphereGeometry(0.07 + Math.random() * 0.09, 8, 6),
-      bloomMats[i % bloomMats.length],
-    );
+    const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.07 + Math.random() * 0.09, 8, 6), bloomMat);
     bloom.position.set(
       fieldPos.x + 0.22,
       0.4 + Math.random() * (H - 1.2),
@@ -129,7 +135,7 @@ export function buildGridAlpha(): RoomDetail {
     root.add(bloom);
   }
   for (let i = 0; i < 5; i++) {
-    const glow = new THREE.PointLight([0x2ee6d6, 0xe344c4][i % 2], 3.2, 5.5, 2);
+    const glow = new THREE.PointLight(0x2ee6d6, 3.2, 5.5, 2);
     glow.position.set(fieldPos.x - 0.5, 1.2 + (i % 3) * 0.8, fieldPos.z - 4.8 + i * 2.4);
     root.add(glow);
     bloomLights.push(glow);
@@ -185,17 +191,25 @@ export function buildGridAlpha(): RoomDetail {
     root.add(pipe);
   }
   const valves = new THREE.Group();
+  // The first VALVE_COUNT spots are the coolant valves Alpha must open for
+  // Beta's hack (grid.server); the rest is dressing.
   const valveSpots: Array<[number, number]> = [
     [1.4, 0],
     [2.1, 0.55],
     [2.8, -0.4],
     [1.9, -0.8],
   ];
+  const valveWheels: THREE.Mesh[] = [];
+  const valveWheelTargets: number[] = [];
   for (const [vy, vz] of valveSpots) {
     const unit = valve(rust, rustDark);
     unit.rotation.y = Math.PI / 2;
     unit.position.set(-W / 2 + 0.42, vy, pipesPos.z + vz);
     valves.add(unit);
+    if (valveWheels.length < VALVE_COUNT) {
+      valveWheels.push(unit.children[0] as THREE.Mesh);
+      valveWheelTargets.push(0);
+    }
   }
   root.add(valves);
 
@@ -262,13 +276,16 @@ export function buildGridAlpha(): RoomDetail {
   puddle.position.set(-0.6, 0.012, 1.8);
   puddle.receiveShadow = true;
   root.add(puddle);
-  // Doors at both ends (back to R1, on to R3).
-  const doorIn = rustedDoor(rust, rustDark).group;
-  doorIn.position.set(0, 0, D / 2 - 0.1);
-  doorIn.rotation.y = Math.PI;
-  const doorOut = rustedDoor(rust, rustDark).group;
-  doorOut.position.set(0, 0, -D / 2 + 0.1);
-  root.add(doorIn, doorOut);
+  // Doors at both ends (back to R1, on to R3). The R1 door releases with the
+  // mural (sync.starmap); the R3 door with the server hack (grid.server).
+  const doorIn = rustedDoor(rust, rustDark);
+  doorIn.group.position.set(0, 0, D / 2 - 0.1);
+  doorIn.group.rotation.y = Math.PI;
+  const doorOut = rustedDoor(rust, rustDark);
+  doorOut.group.position.set(0, 0, -D / 2 + 0.1);
+  root.add(doorIn.group, doorOut.group);
+  let doorInProgress = 0;
+  let doorOutProgress = 0;
 
   // ── Drifting humid dust ─────────────────────────────────────────────────
   const DUST = 260;
@@ -293,13 +310,40 @@ export function buildGridAlpha(): RoomDetail {
   );
   root.add(dust);
 
+  const openDoor = (door: ReturnType<typeof rustedDoor>, progress: number): void => {
+    door.wheel.rotation.z = progress * Math.PI * 4;
+    const swing = Math.max(0, (progress - 0.4) / 0.6);
+    door.leaf.rotation.y = -swing * 1.9; // creaks inward
+  };
+
   const update = (delta: number, elapsed: number): void => {
     floraLights.forEach((light, i) => {
       light.intensity = 2.0 + Math.sin(elapsed * 1.1 + floraPhases[i]) * 1.1;
     });
+    // The bloom wall mirrors Beta's laser emission in real time. When the
+    // emitted colour matches the safe path for Beta's current zone, the
+    // blooms OPEN — a visible surge Alpha reads and relays.
+    const bloomColor = LASER_TO_BLOOM[session.laserColor];
+    bloomMat.emissive.setHex(bloomColor);
+    const open = puzzleState.isSolved('grid.bloom') || session.laserMatchesSafePath();
+    bloomMat.emissiveIntensity = open ? 3.2 : 0.9;
     bloomLights.forEach((light, i) => {
-      light.intensity = 2.8 + Math.sin(elapsed * 1.4 + bloomPhases[i]) * 1.2;
+      light.color.setHex(bloomColor);
+      light.intensity = (open ? 5.2 : 1.6) + Math.sin(elapsed * 1.4 + bloomPhases[i]) * 1.2;
     });
+    // Opened valve wheels ease around.
+    valveWheels.forEach((wheel, i) => {
+      wheel.rotation.z += (valveWheelTargets[i] - wheel.rotation.z) * Math.min(1, delta * 4);
+    });
+    // Doors creak open once their puzzles release them.
+    if (puzzleState.isSolved('sync.starmap') && doorInProgress < 1) {
+      doorInProgress = Math.min(1, doorInProgress + delta / 2.4);
+      openDoor(doorIn, doorInProgress);
+    }
+    if (puzzleState.isSolved('grid.server') && doorOutProgress < 1) {
+      doorOutProgress = Math.min(1, doorOutProgress + delta / 2.4);
+      openDoor(doorOut, doorOutProgress);
+    }
     const pos = dustGeo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < DUST; i++) {
       let y = pos.getY(i) + delta * 0.05;
@@ -309,5 +353,90 @@ export function buildGridAlpha(): RoomDetail {
     pos.needsUpdate = true;
   };
 
-  return { object: root, update };
+  // ── Interactables ────────────────────────────────────────────────────────
+  const say = (text: string): void => {
+    window.dispatchEvent(new CustomEvent('game:toast', { detail: text }));
+  };
+  let readingIndex = 0;
+  const interactables: Interactable[] = [
+    {
+      object: bench,
+      label: () =>
+        !puzzleState.isAvailable('grid.chemical')
+          ? 'Soil bench — the trays are sealed shut. The lockdown from R1 still holds.'
+          : puzzleState.isSolved('grid.chemical')
+            ? 'Soil bench — strips spent. Beta has the base code.'
+            : 'Soil/pH bench — click to run a test strip and read it to Beta.',
+      enabled: () => puzzleState.isAvailable('grid.chemical') && !puzzleState.isSolved('grid.chemical'),
+      onInteract: () => {
+        ensureAudio();
+        playBlip(440);
+        say(SOIL_READINGS[readingIndex]);
+        readingIndex = (readingIndex + 1) % SOIL_READINGS.length;
+      },
+    },
+    {
+      object: vineWall,
+      label: () => {
+        if (!puzzleState.isAvailable('grid.bloom'))
+          return 'Mutated flora wall — dormant. It stirs only once Beta’s analyzer wakes.';
+        if (puzzleState.isSolved('grid.bloom'))
+          return 'Flora wall — the vines hang open. Beta is through the maze.';
+        const zone = session.bloomZone;
+        const safe = BLOOM_SAFE_PATH[zone].toUpperCase();
+        return session.laserMatchesSafePath()
+          ? `Flora wall — the blooms are WIDE OPEN. Click to wave Beta through zone ${zone + 1}/${BLOOM_SAFE_PATH.length}.`
+          : `Flora wall — zone ${zone + 1}/${BLOOM_SAFE_PATH.length}: the buds strain toward ${safe} light. Tell Beta to shift the lasers.`;
+      },
+      enabled: () => puzzleState.isAvailable('grid.bloom') && !puzzleState.isSolved('grid.bloom'),
+      onInteract: () => {
+        ensureAudio();
+        const zone = session.bloomZone;
+        if (session.advanceBloomZone()) {
+          if (!puzzleState.isSolved('grid.bloom')) {
+            playSuccess();
+            say(`You wave Beta past the dark beams — zone ${zone + 1}/${BLOOM_SAFE_PATH.length} crossed.`);
+          }
+        } else {
+          playFail();
+          say('The blooms are shut tight — the lasers ahead are still hot.');
+        }
+      },
+    },
+    {
+      object: valves,
+      label: () => {
+        if (!puzzleState.isAvailable('grid.server'))
+          return 'Rusted valves — seized solid while the laser maze is live.';
+        return session.allValvesOpen
+          ? 'Coolant valves — all open. Coolant thunders through to Beta’s racks.'
+          : `Coolant valves — ${session.valvesOpen}/${VALVE_COUNT} open. Beta’s servers run hot; open them all.`;
+      },
+      enabled: () => puzzleState.isAvailable('grid.server') && !session.allValvesOpen,
+      onInteract: () => {
+        ensureAudio();
+        const index = session.valvesOpen;
+        if (!session.openValve()) return;
+        valveWheelTargets[index] += Math.PI * 2;
+        playBlip(300 + index * 90);
+        say(
+          session.allValvesOpen
+            ? 'Coolant flows — Beta’s server rack just spun down. Hack it!'
+            : `Valve ${index + 1} grinds open. ${VALVE_COUNT - session.valvesOpen} to go.`,
+        );
+      },
+    },
+    {
+      object: doorOut.group,
+      label: () =>
+        puzzleState.isSolved('grid.server')
+          ? 'Hatch to the Paradox Core — open.'
+          : 'Rusted hatch to R3 — sealed. Beta’s server hack controls it.',
+      onInteract: () => {
+        if (!puzzleState.isSolved('grid.server')) say('The wheel won’t budge.');
+      },
+    },
+  ];
+
+  return { object: root, update, interactables };
 }

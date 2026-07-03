@@ -1,10 +1,17 @@
 import * as THREE from 'three';
 import { slotLocal } from '@/config/facility';
+import { ANCHOR_CANDIDATES, TARGET_ANCHOR_INDEX, TARGET_MIRRORS } from '@/config/puzzles';
+import { ensureAudio, playBlip, playFail, playSuccess } from '@/core/audio';
 import { ChartScreen, domeFloorTextures, steelTexture } from '@/core/textures';
 import { hangingCage, sciFiDoor, securityDrone } from '@/rooms/props';
-import type { RoomDetail } from '@/rooms/types';
-import { RoomId } from '@/types';
+import type { Interactable, RoomDetail } from '@/rooms/types';
+import { session } from '@/systems/puzzle/session';
+import { puzzleState } from '@/systems/puzzle/state';
+import { DimensionId, RoomId } from '@/types';
 import { buildDomeShell } from './domeShell';
+
+/** The mirror numbers the charts call for, as Beta reads them out (1-based). */
+const MIRROR_CALLOUT = TARGET_MIRRORS.map((m) => String(m + 1)).join(' & ');
 
 const R = 10;
 const PIT_R = 2.6;
@@ -226,8 +233,36 @@ export function buildCoreBeta(): RoomDetail {
 
   // ── Animation ────────────────────────────────────────────────────────────
   const beamMat = beam.material as THREE.MeshBasicMaterial;
-  const update = (_delta: number, elapsed: number): void => {
+  const say = (text: string): void => {
+    window.dispatchEvent(new CustomEvent('game:toast', { detail: text }));
+  };
+  let doorProgress = 0;
+  const doorBar = door.lockBar.material as THREE.MeshBasicMaterial;
+  const update = (delta: number, elapsed: number): void => {
     charts.update(elapsed);
+    // Chart directive tracks the core puzzle chain.
+    if (puzzleState.isSolved('core.mirrors')) charts.directive = 'MIRRORS LOCKED — PULL BOTH LEVERS ON A COUNT';
+    else if (puzzleState.isSolved('core.anchor')) charts.directive = `ALIGN MIRRORS ${MIRROR_CALLOUT} (ALPHA SIDE)`;
+    // Lever arm mirrors the shared pull state; a lone pull springs back.
+    const pulled = session.leverPulled(DimensionId.Beta);
+    arm.rotation.x += ((pulled ? -0.6 : 0.5) - arm.rotation.x) * Math.min(1, delta * 8);
+    const expired = session.expireLonePull(performance.now() / 1000);
+    if (expired) {
+      playFail();
+      say('The lever snaps back — «DESYNC». Pull at the SAME moment as Alpha!');
+    }
+    (statusLights[2].material as THREE.MeshBasicMaterial).color.setHex(
+      puzzleState.isSolved('core.mirrors') ? 0x39f0a0 : 0x223,
+    );
+    // R2 door releases with the server hack.
+    if (puzzleState.isSolved('grid.server')) {
+      door.lockBar.visible = true;
+      doorBar.color.setHex(0x39f0a0);
+      if (doorProgress < 1) {
+        doorProgress = Math.min(1, doorProgress + delta / 2);
+        door.leaf.position.y = doorProgress * 2.4;
+      }
+    }
     // Reactor breathes: beam, pit glow and cage crystal pulse together.
     const pulse = 0.5 + Math.sin(elapsed * 2.6) * 0.5;
     beamMat.opacity = 0.16 + pulse * 0.12;
@@ -243,11 +278,92 @@ export function buildCoreBeta(): RoomDetail {
     }
     // Emergency beacon throbs; lever status blinks on lockdown cadence.
     beacon.intensity = 8 + Math.sin(elapsed * 4.4) * 6;
-    door.lockBar.visible = Math.sin(elapsed * 5) > -0.4;
+    if (!puzzleState.isSolved('grid.server')) {
+      door.lockBar.visible = Math.sin(elapsed * 5) > -0.4;
+    }
     (statusLights[1].material as THREE.MeshBasicMaterial).color.setHex(
       Math.sin(elapsed * 3) > 0 ? 0xffa427 : 0x223322,
     );
   };
 
-  return { object: root, update };
+  // ── Interactables ────────────────────────────────────────────────────────
+  let anchorIndex = -1;
+  const interactables: Interactable[] = [
+    {
+      object: chartsPlane,
+      label: () => {
+        if (!puzzleState.isAvailable('core.anchor'))
+          return 'Dilation charts — «DATA SEALED UNTIL SECTOR BREACH»';
+        if (puzzleState.isSolved('core.anchor'))
+          return `Dilation charts — ANCHOR ${ANCHOR_CANDIDATES[TARGET_ANCHOR_INDEX]} locked. They also flag mirrors ${MIRROR_CALLOUT} — tell Alpha.`;
+        return anchorIndex < 0
+          ? 'Dilation charts — click to cycle anchor candidates. Cross-check Alpha’s whiteboard.'
+          : `Dilation charts — candidate ${ANCHOR_CANDIDATES[anchorIndex]}. Click to cycle; Alpha’s whiteboard has the constant.`;
+      },
+      enabled: () => puzzleState.isAvailable('core.anchor') && !puzzleState.isSolved('core.anchor'),
+      onInteract: () => {
+        ensureAudio();
+        anchorIndex = (anchorIndex + 1) % ANCHOR_CANDIDATES.length;
+        charts.anchorCandidate = ANCHOR_CANDIDATES[anchorIndex];
+        playBlip(560);
+        if (anchorIndex === TARGET_ANCHOR_INDEX) {
+          // Brief beat so the player sees the candidate land before the lock.
+          setTimeout(() => {
+            charts.anchorAccepted = true;
+            puzzleState.solve('core.anchor');
+            playSuccess();
+          }, 500);
+        }
+      },
+    },
+    {
+      object: termScreen,
+      label: () => {
+        if (!puzzleState.isAvailable('core.mirrors'))
+          return 'Core Control Terminal — «ANCHOR CONSTANT REQUIRED»';
+        if (puzzleState.isSolved('core.mirrors')) return 'Core Control Terminal — energy channelled. Ready for the merge.';
+        return `Core Control Terminal — mirror telemetry: Alpha has ${session.describeMirrors()} aligned. The charts call for ${MIRROR_CALLOUT}.`;
+      },
+      enabled: () => puzzleState.isAvailable('core.mirrors'),
+      onInteract: () => {
+        ensureAudio();
+        playBlip(620);
+        say(
+          puzzleState.isSolved('core.mirrors')
+            ? 'Telemetry: beam channelled across the pit. Both levers are live.'
+            : `Telemetry: mirrors aligned on Alpha’s side → ${session.describeMirrors()}. Call for ${MIRROR_CALLOUT}.`,
+        );
+      },
+    },
+    {
+      object: lever,
+      label: () => {
+        if (puzzleState.isSolved('core.lever')) return 'The lever is down. The timelines are merging…';
+        if (!puzzleState.isAvailable('core.lever'))
+          return 'Manual lever — «INTERLOCK ENGAGED». The mirrors must channel first.';
+        return session.leverPulled(DimensionId.Beta)
+          ? 'LEVER PULLED — Alpha must pull NOW!'
+          : 'Manual Lever — count Alpha down over voice: “3, 2, 1, PULL!”';
+      },
+      enabled: () =>
+        puzzleState.isAvailable('core.lever') &&
+        !puzzleState.isSolved('core.lever') &&
+        !session.leverPulled(DimensionId.Beta),
+      onInteract: () => {
+        ensureAudio();
+        playBlip(220);
+        session.pullLever(DimensionId.Beta, performance.now() / 1000);
+      },
+    },
+    {
+      object: door.group,
+      label: () =>
+        puzzleState.isSolved('grid.server')
+          ? 'Door R2 — lockdown lifted.'
+          : 'Door R2 — LOCKDOWN. Sealed from the Grid side.',
+      onInteract: () => {},
+    },
+  ];
+
+  return { object: root, update, interactables };
 }

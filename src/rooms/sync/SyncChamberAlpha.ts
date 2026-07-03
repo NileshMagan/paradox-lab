@@ -233,6 +233,9 @@ export function buildSyncChamberAlpha(): RoomDetail {
     root.add(mesh);
     return { mesh, land, falling: false };
   });
+  // Drip AUDIO is off until the player clicks the bucket to listen — otherwise
+  // the rhythm loops non-stop and grates. The visual drops always fall.
+  let listening = false;
 
   // ── Rusted hatch door (slot: sync.hatch) ─────────────────────────────────
   const hatchPos = slotLocal(RoomId.SyncChamber, 'sync.hatch');
@@ -347,7 +350,7 @@ export function buildSyncChamberAlpha(): RoomDetail {
         drop.mesh.position.y = DROP_TOP - (t / FALL_TIME) * (DROP_TOP - DROP_BOTTOM);
         drop.mesh.visible = true;
       } else {
-        if (drop.falling) playDrip(); // it just hit the bucket
+        if (drop.falling && listening) playDrip(); // it just hit the bucket
         drop.mesh.visible = false;
       }
       drop.falling = falling;
@@ -372,10 +375,18 @@ export function buildSyncChamberAlpha(): RoomDetail {
   const interactables: Interactable[] = [
     {
       object: bucket,
-      label: () => 'Rusted bucket — water drips into it in a steady pattern. Listen…',
+      label: () =>
+        listening
+          ? 'Rusted bucket — you’re listening to the drip. Click to stop.'
+          : 'Rusted bucket — water drips into it in a steady pattern. Click to listen.',
       onInteract: () => {
         ensureAudio();
-        say('You listen: drip · drip · … · drip  (short, short, LONG, short)');
+        listening = !listening;
+        say(
+          listening
+            ? 'You listen: drip · drip · … · drip  (short, short, LONG, short)'
+            : 'You stop listening to the drip.',
+        );
       },
     },
     {

@@ -75,5 +75,11 @@ window.addEventListener('game:toast', (e) => toast((e as CustomEvent<string>).de
 const SOLVE_TOASTS: Record<string, string> = {
   'sync.frequency': '✓ FREQUENCY ACCEPTED — star map decrypted on Beta’s console',
   'sync.starmap': '✓ MURAL ALIGNED — the Sync Chamber doors release',
+  'grid.chemical': '✓ BASE CODE CONFIRMED — the laser grid’s spectrum controls unlock',
+  'grid.bloom': '✓ MAZE CROSSED — Beta is through; the flora settles',
+  'grid.server': '✓ ROOT ACCESS — the doors to the Paradox Core release',
+  'core.anchor': '✓ ANCHOR CONSTANT LOCKED — both dimensions share one moment',
+  'core.mirrors': '✓ ENERGY CHANNELLED — the manual levers are live',
+  'core.lever': '✓ SIMULTANEOUS PULL — THE TIMELINES MERGE',
 };
 puzzleState.onSolved((id) => toast(SOLVE_TOASTS[id] ?? `✓ ${id} solved`));
