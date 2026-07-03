@@ -43,12 +43,19 @@ strand of ivy; a seed string is all the server ever needs to send.
 | `assets/gothic.ts` | Dark/crypt: coffin, candelabra, gargoyle, tombstones, iron fence, chandelier, cobwebs, broken mirror, crypt niche, cauldron. |
 | `assets/custom.ts` | **Swappable content**: picture frames, gallery walls, posters, TV screens, standees, banners, desk photos, display cases — each returns `ImageSlot`s (`slot.setImage(await loadImageTexture(url))`) so rooms are personalised per group without touching geometry. Plus `textTexture` for arbitrary text and `engravedPlaque(lines)`. |
 | `assets/vista.ts` | **The world outside**: `windowVista` (window + glowing seeded panorama — city-night/mountains/desert/forest/ocean), building facades with lit windows, skyline blocks, cabin, guard tower, colonnade, walls with door/window openings. |
+| `assets/weather.ts` | **Animated atmosphere** (`{ group, update }` — drive from the room loop): snowfall, rainfall, fog banks, ground mist, dust motes, falling leaves, ember sparks, strobing lightning, drifting clouds, god-rays. Theme-agnostic; colours via opts. |
+| `assets/water.ts` | Animated water: rippling surfaces, scrolling waterfalls, spraying fountains, streams, wishing well, lily pads, ceiling drips. |
+| `assets/vehicles.ts` | Sedan (+taxi variant), delivery van, forklift (lifting fork handle), bicycle, utility buggy, rowboat, wooden wagon. |
+| `assets/figures.ts` | Faceless presences: poseable mannequin, tailor's dummy, suit of armour, skeletal remains, scarecrow, robed statue, empty space suit, antique diving suit. |
+| `assets/nautical.ts` | Ship's wheel, anchor, porthole (real sea panorama behind the glass), cannon, sweeping lighthouse beacon, bell, buoy, oar rack. |
+| `assets/western.ts` | Swinging saloon doors, wagon wheel, hay bales, saguaro, trough, hitching post, pot-belly stove, flickering campfire. |
+| `assets/steampunk.ts` | Meshing gear wall, riveted boiler, brass telescope, orbiting orrery, typewriter, gramophone, spinning airship prop, pneumatic tubes, automaton bust. |
 | `dress.ts` | Placement engine: `scatter` (spacing + keep-outs), `alongWall`, `ring` → pure `Placement[]` data, applied with `applyPlacement`. |
 | `gallery/` | Dev showroom: `npm run dev` → open `http://localhost:5173/gallery.html`. `[R]` reseeds, `[T]` cycles light moods, `[1-9]` jumps to an aisle, `[`/`]` steps aisles, `[0]` overview. Palette-driven aisles wear the stock palettes in rotation. Must be served by Vite (it compiles the TS entry) — a plain static server (e.g. VS Code Live Server) can't load it. |
 
 ## How the library scales
 
-Don't count assets — count the multiplier: **240 builders × 16 palettes × unlimited
+Don't count assets — count the multiplier: **~300 builders × 16 palettes × unlimited
 seeds**, and most builders take shape parameters on top. "How many assets do we
 need for a new room?" is usually zero: pick a palette (or write a new spec),
 choose ~10–15 builders, and let the dressing kit place them around the puzzle

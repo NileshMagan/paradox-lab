@@ -331,7 +331,10 @@ function themed(...names: string[]): Palette[] {
 }
 
 /** Anything a builder hands back: a plain group, a Built, or a handle object. */
-type AnyBuilt = THREE.Object3D | Built | { group: THREE.Group };
+type AnyBuilt =
+  | THREE.Object3D
+  | Built
+  | { group: THREE.Group; update?: (delta: number, elapsed: number) => void };
 
 function palExhibits(
   builders: Array<{
@@ -347,12 +350,13 @@ function palExhibits(
     name: `${name} · ${palFor(i).name}`,
     build: (rng: Rng): Built => {
       const out = build(rng, palFor(i));
-      const built: Built =
-        out instanceof THREE.Object3D
-          ? { object: out }
-          : 'object' in out
-            ? out
-            : { object: out.group };
+      let built: Built;
+      if (out instanceof THREE.Object3D) built = { object: out };
+      else if ('object' in out) built = out;
+      else {
+        built = { object: out.group };
+        if (out.update) built.update = out.update; // weather/water FX carry their own animation
+      }
       if (mount === 'wall') {
         const wrap = new THREE.Group();
         wrap.add(backdrop(palFor(i).body), built.object);
@@ -960,7 +964,195 @@ const VISTA_EXHIBITS = palExhibits(
   themed('streets', 'arctic', 'sandstone', 'noir'),
 );
 
-// ── Floor plan: twenty-five aisles of plinths ───────────────────────────────
+const FX_SIZE = { width: 2.4, height: 2.6, depth: 2.4 };
+const WEATHER_EXHIBITS = palExhibits(
+  [
+    { name: 'snowfall', build: (rng) => S.snowfall(rng, { ...FX_SIZE, count: 180 }) },
+    { name: 'rainfall', build: (rng) => S.rainfall(rng, { ...FX_SIZE, count: 130 }) },
+    { name: 'fogBank', build: (rng) => S.fogBank(rng, { width: 2.4, depth: 2.4 }) },
+    { name: 'groundMist', build: (rng) => S.groundMist(rng, { width: 2.4, depth: 2.4 }) },
+    { name: 'dustMotes', build: (rng) => S.dustMotes(rng, { ...FX_SIZE, count: 120 }) },
+    { name: 'fallingLeaves', build: (rng) => S.fallingLeaves(rng, { ...FX_SIZE, count: 18 }) },
+    { name: 'emberSparks', build: (rng) => S.emberSparks(rng, { height: 2.4 }) },
+    { name: 'lightningRig', build: (rng) => S.lightningRig(rng, { height: 2.6 }) },
+    { name: 'cloudPuffs', build: (rng) => S.cloudPuffs(rng, { width: 2.4 }) },
+    { name: 'godRays', build: (rng) => S.godRays(rng, { height: 2.6 }) },
+  ],
+  themed('noir'),
+);
+
+const VEHICLE_EXHIBITS = palExhibits(
+  [
+    { name: 'sedanCar', build: (rng, pal) => S.sedanCar(rng, pal) },
+    { name: 'sedanCar:taxi', build: (rng, pal) => S.sedanCar(rng, pal, { taxi: true }) },
+    { name: 'deliveryVan', build: (rng, pal) => S.deliveryVan(rng, pal) },
+    { name: 'forklift', build: (rng, pal) => S.forklift(rng, pal) },
+    { name: 'bicycle', build: (rng, pal) => S.bicycle(rng, pal) },
+    { name: 'utilityBuggy', build: (rng, pal) => S.utilityBuggy(rng, pal) },
+    { name: 'rowBoat', build: (rng, pal) => S.rowBoat(rng, pal) },
+    { name: 'woodenWagon', build: (rng, pal) => S.woodenWagon(rng, pal) },
+  ],
+  themed('streets', 'agency', 'saloon'),
+);
+
+const FIGURE_EXHIBITS = palExhibits(
+  [
+    { name: 'mannequin', build: (rng, pal) => S.mannequin(rng, pal) },
+    { name: 'tailorDummy', build: (rng, pal) => S.tailorDummy(rng, pal) },
+    { name: 'suitOfArmor', build: (rng, pal) => S.suitOfArmor(rng, pal) },
+    { name: 'skeletonRemains', build: (rng, pal) => S.skeletonRemains(rng, pal) },
+    { name: 'scarecrow', build: (rng, pal) => S.scarecrow(rng, pal) },
+    { name: 'robedStatue', build: (rng, pal) => S.robedStatue(rng, pal) },
+    { name: 'spaceSuit', build: (rng, pal) => S.spaceSuit(rng, pal) },
+    { name: 'divingSuit', build: (rng, pal) => S.divingSuit(rng, pal) },
+  ],
+  themed('noir', 'gothic', 'sterile'),
+);
+
+const WATER_EXHIBITS = palExhibits(
+  [
+    { name: 'waterSurface', build: (rng) => S.waterSurface(rng, { width: 2.2, depth: 2.2 }) },
+    { name: 'waterfallSheet', build: (rng) => S.waterfallSheet(rng, { height: 2.2 }) },
+    { name: 'fountainRing', build: (rng, pal) => S.fountainRing(rng, pal) },
+    { name: 'streamRibbon', build: (rng, pal) => S.streamRibbon(rng, pal) },
+    { name: 'stoneWell', build: (rng, pal) => S.stoneWell(rng, pal) },
+    { name: 'lilyCluster', build: (rng, pal) => S.lilyCluster(rng, pal) },
+    { name: 'dripLine', build: (rng) => S.dripLine(rng, { height: 2.4 }) },
+  ],
+  themed('abyssal', 'arctic'),
+);
+
+const NAUTICAL_EXHIBITS = palExhibits(
+  [
+    {
+      name: 'shipWheel',
+      build: (rng, pal) => {
+        const { group, wheel } = S.shipWheel(rng, pal);
+        return { object: group, update: (delta: number) => void (wheel.rotation.z += delta * 0.3) };
+      },
+    },
+    { name: 'anchorProp', build: (rng, pal) => S.anchorProp(rng, pal) },
+    { name: 'portholeWall', build: (rng, pal) => S.portholeWall(rng, pal) },
+    { name: 'cannonBarrel', build: (rng, pal) => S.cannonBarrel(rng, pal) },
+    {
+      name: 'lighthouseBeacon',
+      build: (rng, pal) => {
+        const { group, rotor } = S.lighthouseBeacon(rng, pal);
+        group.position.y = 0.9; // raise the lamp room to eye height on a post
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.9, 10), pal.body);
+        post.position.y = 0.45;
+        const wrap = new THREE.Group();
+        wrap.add(post, group);
+        return { object: wrap, update: (delta: number) => void (rotor.rotation.y += delta * 1.2) };
+      },
+    },
+    { name: 'shipBell', build: (rng, pal) => S.shipBell(rng, pal) },
+    { name: 'buoyFloat', build: (rng, pal) => S.buoyFloat(rng, pal) },
+    { name: 'oarRack', mount: 'wall', build: (rng, pal) => S.oarRack(rng, pal) },
+  ],
+  themed('abyssal', 'saloon'),
+);
+
+const WESTERN_EXHIBITS = palExhibits(
+  [
+    {
+      name: 'saloonDoors',
+      build: (rng, pal) => {
+        const { group, leftLeaf, rightLeaf } = S.saloonDoors(rng, pal);
+        return {
+          object: group,
+          update: (_d: number, e: number) => {
+            // Dying swing after someone barged through.
+            const decay = Math.exp(-((e % 9) * 0.5)) * 0.6;
+            leftLeaf.rotation.y = -Math.sin((e % 9) * 6) * decay;
+            rightLeaf.rotation.y = Math.sin((e % 9) * 6) * decay;
+          },
+        };
+      },
+    },
+    { name: 'wagonWheelProp', build: (rng, pal) => S.wagonWheelProp(rng, pal) },
+    { name: 'hayBales', build: (rng, pal) => S.hayBales(rng, pal) },
+    { name: 'cactusSaguaro', build: (rng, pal) => S.cactusSaguaro(rng, pal) },
+    { name: 'waterTrough', build: (rng, pal) => S.waterTrough(rng, pal) },
+    { name: 'hitchingPost', build: (rng, pal) => S.hitchingPost(rng, pal) },
+    { name: 'potbellyStove', build: (rng, pal) => S.potbellyStove(rng, pal) },
+    {
+      name: 'campfire',
+      build: (rng, pal) => {
+        const { group, flameMaterials } = S.campfire(rng, pal);
+        return {
+          object: group,
+          update: (_d: number, e: number) => {
+            flameMaterials.forEach((m, i) => {
+              m.emissiveIntensity = 2 - i * 0.4 + Math.sin(e * 9 + i * 2.3) * 0.5;
+            });
+          },
+        };
+      },
+    },
+  ],
+  themed('saloon'),
+);
+
+const STEAMPUNK_EXHIBITS = palExhibits(
+  [
+    {
+      name: 'gearWall',
+      build: (rng, pal) => {
+        const { group, gears } = S.gearWall(rng, pal);
+        return {
+          object: group,
+          update: (delta: number) =>
+            gears.forEach((wheel, i) => void (wheel.rotation.z += delta * 0.6 * (i % 2 ? -1 : 1))),
+        };
+      },
+    },
+    { name: 'boilerRig', build: (rng, pal) => S.boilerRig(rng, pal) },
+    { name: 'brassTelescope', build: (rng, pal) => S.brassTelescope(rng, pal) },
+    {
+      name: 'orrery',
+      build: (rng, pal) => {
+        const { group, arms } = S.orrery(rng, pal);
+        // Table-scale prop: present it on a pedestal.
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.85, 0.7), pal.body);
+        stand.position.y = 0.425;
+        group.position.y = 0.85;
+        const wrap = new THREE.Group();
+        wrap.add(stand, group);
+        return {
+          object: wrap,
+          update: (delta: number) =>
+            arms.forEach((arm, i) => void (arm.rotation.y += delta * (0.8 - i * 0.25))),
+        };
+      },
+    },
+    {
+      name: 'typewriterProp',
+      build: (rng, pal) => {
+        const prop = S.typewriterProp(rng, pal);
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.55), pal.body);
+        stand.position.y = 0.375;
+        prop.position.y = 0.75;
+        const wrap = new THREE.Group();
+        wrap.add(stand, prop);
+        return wrap;
+      },
+    },
+    { name: 'gramophone', build: (rng, pal) => S.gramophone(rng, pal) },
+    {
+      name: 'airshipProp',
+      build: (rng, pal) => {
+        const { group, rotor } = S.airshipProp(rng, pal);
+        return { object: group, update: (delta: number) => void (rotor.rotation.z += delta * 1.5) };
+      },
+    },
+    { name: 'pneumaticStation', build: (rng, pal) => S.pneumaticStation(rng, pal) },
+    { name: 'automatonBust', build: (rng, pal) => S.automatonBust(rng, pal) },
+  ],
+  themed('brass'),
+);
+
+// ── Floor plan: thirty-two aisles of plinths ────────────────────────────────
 const SPACING = 3.2;
 const AISLE_GAP = 7; // roomy enough that wall-exhibit backdrops never crowd the camera
 const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
@@ -989,6 +1181,13 @@ const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
   GOTHIC_EXHIBITS,
   CUSTOM_EXHIBITS,
   VISTA_EXHIBITS,
+  WEATHER_EXHIBITS,
+  VEHICLE_EXHIBITS,
+  FIGURE_EXHIBITS,
+  WATER_EXHIBITS,
+  NAUTICAL_EXHIBITS,
+  WESTERN_EXHIBITS,
+  STEAMPUNK_EXHIBITS,
 ].map((exhibits, i) => ({ exhibits, z: 15 - i * AISLE_GAP }));
 
 function cellX(index: number, total: number): number {
@@ -1009,30 +1208,32 @@ controls.enableDamping = true;
 
 // Museum floor.
 const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a2027, roughness: 0.9 });
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(48, 198), floorMat);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(48, 248), floorMat);
 floor.rotation.x = -Math.PI / 2;
-floor.position.z = -69;
+floor.position.z = -94;
 floor.receiveShadow = true;
 scene.add(floor);
-const grid = new THREE.GridHelper(198, 120, 0x232b36, 0x1a212b);
-grid.position.set(0, 0.002, -69);
+const grid = new THREE.GridHelper(248, 152, 0x232b36, 0x1a212b);
+grid.position.set(0, 0.002, -94);
 scene.add(grid);
 
 // ── Light moods ─────────────────────────────────────────────────────────────
-function moodGroup(lights: THREE.Light[]): THREE.Group {
+function moodGroup(objects: THREE.Object3D[]): THREE.Group {
   const g = new THREE.Group();
-  for (const l of lights) g.add(l);
+  for (const obj of objects) g.add(obj);
   scene.add(g);
   return g;
 }
 const showroomKey = new THREE.DirectionalLight(0xffffff, 5);
 showroomKey.position.set(6, 12, 8);
 showroomKey.castShadow = true;
-showroomKey.shadow.mapSize.set(4096, 4096);
+// A tight shadow box that FOLLOWS the camera (jumpToAisle moves light+target):
+// crisp shadows in every aisle instead of one blurry map over the whole floor.
+showroomKey.shadow.mapSize.set(2048, 2048);
 showroomKey.shadow.camera.left = -26;
 showroomKey.shadow.camera.right = 26;
-showroomKey.shadow.camera.top = 100;
-showroomKey.shadow.camera.bottom = -100;
+showroomKey.shadow.camera.top = 26;
+showroomKey.shadow.camera.bottom = -26;
 const alphaSun = new THREE.DirectionalLight(0xffd27f, 4.5);
 alphaSun.position.set(-8, 10, 4);
 const betaFill = new THREE.PointLight(0xf4f9ff, 520, 60, 1.6);
@@ -1041,7 +1242,7 @@ const MOODS: Array<{ label: string; background: number; group: THREE.Group }> = 
   {
     label: 'showroom',
     background: 0x0b0e12,
-    group: moodGroup([showroomKey, new THREE.HemisphereLight(0x8fa3bd, 0x2a2620, 2.4)]),
+    group: moodGroup([showroomKey, showroomKey.target, new THREE.HemisphereLight(0x8fa3bd, 0x2a2620, 2.4)]),
   },
   {
     label: 'alpha dusk',
@@ -1123,7 +1324,7 @@ function rebuild(): void {
   // deterministically around a keep-out ring (visible spacing + avoidance).
   const demoSeed = `${seed}:scatter`;
   const demo = new THREE.Group();
-  demo.position.set(0, 0.05, -160);
+  demo.position.set(0, 0.05, -209);
   for (const p of ring({ seed: demoSeed, radius: 2.2, count: 8, radiusJitter: 0.3 })) {
     const fern = fernCluster(new Rng(`${demoSeed}:${p.x.toFixed(2)}`), alphaKit);
     applyPlacement(fern, p);
@@ -1143,11 +1344,15 @@ function jumpToAisle(index: number): void {
   const z = ROWS[currentAisle].z;
   engine.camera.position.set(0, 3.4, z + 5.8);
   controls.target.set(0, 1.2, z);
+  showroomKey.position.set(6, 12, z + 8);
+  showroomKey.target.position.set(0, 0, z);
 }
 function overview(): void {
   currentAisle = -1;
   engine.camera.position.set(0, 26, 42);
   controls.target.set(0, 0.8, -12);
+  showroomKey.position.set(6, 12, 8);
+  showroomKey.target.position.set(0, 0, 0);
 }
 
 window.addEventListener('keydown', (event) => {
