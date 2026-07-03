@@ -54,6 +54,8 @@ strand of ivy; a seed string is all the server ever needs to send.
 | `assets/jungle.ts` | Tropical flora: palms, banana plants, bamboo, giant ferns, vine curtains, flower bushes, mangrove roots, moss boulders, canopy roofs with light shafts, sunken totem idols. |
 | `assets/characters.ts` | **Animated inhabitants** (`{ group, update }`, seeded paths): patrol bot, hover drone, ghost wisp, scurrying rat, butterflies, fish school, sweeping sentry turret. Ambience, not NPCs. |
 | `assets/sound.ts` | Sound emitters + the `userData.soundId` convention: dev-visible `soundMarker`, wall/horn speakers, glowing radio, intercom, walkie-talkie. Rooms traverse for soundIds and feed positions to `core/audio`. |
+| `compose.ts` | **The room system**: `RoomSpec` (shell + lighting + named pieces + scatter, one seed) → `composeRoom()` → `{ group, update, handles, dispose }`. `handles` returns puzzle-prop builder outputs by id for game wiring. |
+| `rooms/` | Authored escape rooms + viewer (`/rooms.html`, `[1]/[2]` switch, `[V]` camera, `[C]` ceiling, `[R]` reseed): `egyptianTomb` ("The Pharaoh's Antechamber") and `agencyBureau` ("Bureau 13"). Copy one as the template for any new theme. |
 | `dress.ts` | Placement engine: `scatter` (spacing + keep-outs), `alongWall`, `ring` → pure `Placement[]` data, applied with `applyPlacement`. |
 | `gallery/` | Dev showroom: `npm run dev` → open `http://localhost:5173/gallery.html`. `[R]` reseeds, `[T]` cycles light moods, `[1-9]` jumps to an aisle, `[`/`]` steps aisles, `[0]` overview. Palette-driven aisles wear the stock palettes in rotation. Must be served by Vite (it compiles the TS entry) — a plain static server (e.g. VS Code Live Server) can't load it. |
 

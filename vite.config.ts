@@ -19,6 +19,8 @@ export default defineConfig({
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         // Dev scenery showroom (src/scenery/gallery) — see src/scenery/README.md.
         gallery: fileURLToPath(new URL('./gallery.html', import.meta.url)),
+        // Composed escape-room viewer (src/scenery/rooms).
+        rooms: fileURLToPath(new URL('./rooms.html', import.meta.url)),
       },
     },
   },
