@@ -12,6 +12,7 @@ import { puzzleState, type PuzzleId } from '@/systems/puzzle/state';
 import { DimensionId } from '@/types';
 import { setHoverLabel } from '@/ui/interactionHud';
 import '@/ui/devHud';
+import '@/ui/objectivesHud';
 import '@/ui/victory';
 
 /**
