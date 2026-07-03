@@ -50,12 +50,16 @@ strand of ivy; a seed string is all the server ever needs to send.
 | `assets/nautical.ts` | Ship's wheel, anchor, porthole (real sea panorama behind the glass), cannon, sweeping lighthouse beacon, bell, buoy, oar rack. |
 | `assets/western.ts` | Swinging saloon doors, wagon wheel, hay bales, saguaro, trough, hitching post, pot-belly stove, flickering campfire. |
 | `assets/steampunk.ts` | Meshing gear wall, riveted boiler, brass telescope, orbiting orrery, typewriter, gramophone, spinning airship prop, pneumatic tubes, automaton bust. |
+| `assets/terrain.ts` | Ground-plane variety: walkable hill mounds (`userData.walkable`), cliff faces, rock arches, boulder fields, gravel, dunes, ledges, glowing fissures, cave mouths. |
+| `assets/jungle.ts` | Tropical flora: palms, banana plants, bamboo, giant ferns, vine curtains, flower bushes, mangrove roots, moss boulders, canopy roofs with light shafts, sunken totem idols. |
+| `assets/characters.ts` | **Animated inhabitants** (`{ group, update }`, seeded paths): patrol bot, hover drone, ghost wisp, scurrying rat, butterflies, fish school, sweeping sentry turret. Ambience, not NPCs. |
+| `assets/sound.ts` | Sound emitters + the `userData.soundId` convention: dev-visible `soundMarker`, wall/horn speakers, glowing radio, intercom, walkie-talkie. Rooms traverse for soundIds and feed positions to `core/audio`. |
 | `dress.ts` | Placement engine: `scatter` (spacing + keep-outs), `alongWall`, `ring` → pure `Placement[]` data, applied with `applyPlacement`. |
 | `gallery/` | Dev showroom: `npm run dev` → open `http://localhost:5173/gallery.html`. `[R]` reseeds, `[T]` cycles light moods, `[1-9]` jumps to an aisle, `[`/`]` steps aisles, `[0]` overview. Palette-driven aisles wear the stock palettes in rotation. Must be served by Vite (it compiles the TS entry) — a plain static server (e.g. VS Code Live Server) can't load it. |
 
 ## How the library scales
 
-Don't count assets — count the multiplier: **~300 builders × 16 palettes × unlimited
+Don't count assets — count the multiplier: **~330 builders × 16 palettes × unlimited
 seeds**, and most builders take shape parameters on top. "How many assets do we
 need for a new room?" is usually zero: pick a palette (or write a new spec),
 choose ~10–15 builders, and let the dressing kit place them around the puzzle

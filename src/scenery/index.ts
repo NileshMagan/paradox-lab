@@ -72,3 +72,7 @@ export * from './assets/water';
 export * from './assets/nautical';
 export * from './assets/western';
 export * from './assets/steampunk';
+export * from './assets/terrain';
+export * from './assets/jungle';
+export * from './assets/characters';
+export * from './assets/sound';

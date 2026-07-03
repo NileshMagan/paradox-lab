@@ -1152,7 +1152,90 @@ const STEAMPUNK_EXHIBITS = palExhibits(
   themed('brass'),
 );
 
-// ── Floor plan: thirty-two aisles of plinths ────────────────────────────────
+const TERRAIN_EXHIBITS = palExhibits(
+  [
+    { name: 'hillMound', build: (rng, pal) => S.hillMound(rng, pal, { radius: 1.1, height: 0.55 }) },
+    { name: 'cliffFace', build: (rng, pal) => S.cliffFace(rng, pal, { width: 1.8, height: 2.2 }) },
+    { name: 'rockArch', build: (rng, pal) => S.rockArch(rng, pal, { span: 1.8 }) },
+    { name: 'boulderField', build: (rng, pal) => S.boulderField(rng, pal, { radius: 1 }) },
+    { name: 'gravelPatch', build: (rng, pal) => S.gravelPatch(rng, pal) },
+    { name: 'duneField', build: (rng, pal) => S.duneField(rng, pal, { width: 2 }) },
+    { name: 'ledgeShelf', build: (rng, pal) => S.ledgeShelf(rng, pal) },
+    { name: 'fissureGlow', build: (rng, pal) => S.fissureGlow(rng, pal) },
+    { name: 'cavePortal', build: (rng, pal) => S.cavePortal(rng, pal, { width: 1.3 }) },
+  ],
+  themed('rustbelt', 'sandstone', 'arctic', 'scorched'),
+);
+
+const JUNGLE_EXHIBITS = palExhibits(
+  [
+    { name: 'palmTree', build: (rng, pal) => S.palmTree(rng, pal) },
+    { name: 'bananaPlant', build: (rng, pal) => S.bananaPlant(rng, pal) },
+    { name: 'bambooClump', build: (rng, pal) => S.bambooClump(rng, pal) },
+    { name: 'giantFern', build: (rng, pal) => S.giantFern(rng, pal) },
+    { name: 'vineCurtain', build: (rng, pal) => S.vineCurtain(rng, pal) },
+    { name: 'flowerBush', build: (rng, pal) => S.flowerBush(rng, pal) },
+    { name: 'mangroveRoot', build: (rng, pal) => S.mangroveRoot(rng, pal) },
+    { name: 'mossBoulder', build: (rng, pal) => S.mossBoulder(rng, pal) },
+    { name: 'canopyRoof', mount: 'ceiling', build: (rng, pal) => S.canopyRoof(rng, pal, { width: 2.4, depth: 2.2 }) },
+    { name: 'totemIdol', build: (rng, pal) => S.totemIdol(rng, pal) },
+  ],
+  themed('overgrown', 'temple'),
+);
+
+const CHARACTER_EXHIBITS = palExhibits(
+  [
+    { name: 'patrolBot', build: (rng, pal) => S.patrolBot(rng, pal) },
+    { name: 'hoverDrone', build: (rng, pal) => S.hoverDrone(rng, pal) },
+    { name: 'ghostWisp', build: (rng, pal) => S.ghostWisp(rng, pal) },
+    { name: 'ratScurrier', build: (rng, pal) => S.ratScurrier(rng, pal) },
+    { name: 'butterflies', build: (rng, pal) => S.butterflies(rng, pal) },
+    { name: 'fishSchool', build: (rng, pal) => S.fishSchool(rng, pal) },
+    { name: 'sentryTurret', mount: 'wall', build: (rng, pal) => S.sentryTurret(rng, pal) },
+  ],
+  themed('neon', 'gothic', 'overgrown'),
+);
+
+const SOUND_EXHIBITS = palExhibits(
+  [
+    { name: 'soundMarker', build: () => S.soundMarker('demo:drip') },
+    { name: 'wallSpeaker', mount: 'wall', build: (rng, pal) => S.wallSpeaker(rng, pal) },
+    { name: 'hornSpeaker', build: (rng, pal) => S.hornSpeaker(rng, pal) },
+    {
+      name: 'radioSet',
+      build: (rng, pal) => {
+        const { group, dialMaterial } = S.radioSet(rng, pal);
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.75, 0.4), pal.body);
+        stand.position.y = 0.375;
+        group.position.y = 0.75;
+        const wrap = new THREE.Group();
+        wrap.add(stand, group);
+        return {
+          object: wrap,
+          update: (_d: number, e: number) => {
+            dialMaterial.emissiveIntensity = 1.2 + (Math.sin(e * 13) > 0.85 ? 0.5 : 0);
+          },
+        };
+      },
+    },
+    { name: 'intercomPanel', mount: 'wall', build: (rng, pal) => S.intercomPanel(rng, pal) },
+    {
+      name: 'walkieTalkie',
+      build: (rng, pal) => {
+        const prop = S.walkieTalkie(rng, pal);
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.5), pal.body);
+        stand.position.y = 0.375;
+        prop.position.y = 0.75;
+        const wrap = new THREE.Group();
+        wrap.add(stand, prop);
+        return wrap;
+      },
+    },
+  ],
+  themed('noir', 'rustbelt'),
+);
+
+// ── Floor plan: thirty-six aisles of plinths ────────────────────────────────
 const SPACING = 3.2;
 const AISLE_GAP = 7; // roomy enough that wall-exhibit backdrops never crowd the camera
 const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
@@ -1188,6 +1271,10 @@ const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
   NAUTICAL_EXHIBITS,
   WESTERN_EXHIBITS,
   STEAMPUNK_EXHIBITS,
+  TERRAIN_EXHIBITS,
+  JUNGLE_EXHIBITS,
+  CHARACTER_EXHIBITS,
+  SOUND_EXHIBITS,
 ].map((exhibits, i) => ({ exhibits, z: 15 - i * AISLE_GAP }));
 
 function cellX(index: number, total: number): number {
@@ -1208,13 +1295,13 @@ controls.enableDamping = true;
 
 // Museum floor.
 const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a2027, roughness: 0.9 });
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(48, 248), floorMat);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(48, 276), floorMat);
 floor.rotation.x = -Math.PI / 2;
-floor.position.z = -94;
+floor.position.z = -108;
 floor.receiveShadow = true;
 scene.add(floor);
-const grid = new THREE.GridHelper(248, 152, 0x232b36, 0x1a212b);
-grid.position.set(0, 0.002, -94);
+const grid = new THREE.GridHelper(276, 168, 0x232b36, 0x1a212b);
+grid.position.set(0, 0.002, -108);
 scene.add(grid);
 
 // ── Light moods ─────────────────────────────────────────────────────────────
@@ -1324,7 +1411,7 @@ function rebuild(): void {
   // deterministically around a keep-out ring (visible spacing + avoidance).
   const demoSeed = `${seed}:scatter`;
   const demo = new THREE.Group();
-  demo.position.set(0, 0.05, -209);
+  demo.position.set(0, 0.05, -237);
   for (const p of ring({ seed: demoSeed, radius: 2.2, count: 8, radiusJitter: 0.3 })) {
     const fern = fernCluster(new Rng(`${demoSeed}:${p.x.toFixed(2)}`), alphaKit);
     applyPlacement(fern, p);
