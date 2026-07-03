@@ -30,6 +30,16 @@ export class ViewNavigator {
     return `Room ${this.roomIndex + 1}/${FACILITY.length}: ${room.id}`;
   }
 
+  /** Blueprint index of the focused room (for per-room light/update gating). */
+  get focusedRoomIndex(): number {
+    return this.roomIndex;
+  }
+
+  /** True while the admin dollhouse overview is active. */
+  get isOverview(): boolean {
+    return this.overview;
+  }
+
   focusRoom(index: number): void {
     this.overview = false;
     this.roomIndex = ((index % FACILITY.length) + FACILITY.length) % FACILITY.length;

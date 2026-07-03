@@ -16,8 +16,20 @@ export abstract class Dimension {
   /** Interactive hotspots contributed by this dimension's rooms. */
   readonly interactables: Interactable[] = [];
   protected readonly theme: (typeof DIMENSION_THEME)[DimensionId];
-  /** Per-frame hooks contributed by detailed rooms. */
-  private readonly detailUpdaters: Array<(delta: number, elapsed: number) => void> = [];
+  /**
+   * Per-room render data. Only the focused room's lights and per-frame update
+   * run: a whole dimension holds ~30 dynamic lights across its three rooms,
+   * and Three.js's forward renderer loops over EVERY light for every pixel, so
+   * leaving them all lit tanks the frame rate. Gating to the focused room
+   * keeps ~10 lights and a single shadow pass live at a time.
+   * `activeRoom === null` is the admin overview (all room lights off, lit by
+   * the flat hemisphere inspection light instead).
+   */
+  private readonly rooms: Array<{
+    update: ((delta: number, elapsed: number) => void) | undefined;
+    lights: THREE.Light[];
+  }> = [];
+  private activeRoom: number | null = null;
 
   constructor(readonly id: DimensionId) {
     this.theme = DIMENSION_THEME[id];
@@ -36,8 +48,8 @@ export abstract class Dimension {
       const detail = this.buildRoomDetail(room);
       if (detail) {
         group.add(detail.object);
-        if (detail.update) this.detailUpdaters.push(detail.update);
         if (detail.interactables) this.interactables.push(...detail.interactables);
+        this.registerRoom(group, detail.update);
         this.scene.add(group);
         continue;
       }
@@ -55,18 +67,50 @@ export abstract class Dimension {
           group.add(prop);
         }
       }
+      this.registerRoom(group);
       this.scene.add(group);
     }
     return this;
   }
 
+  /** Record a room's per-frame update + its lights so setActiveRoom can gate them. */
+  private registerRoom(
+    group: THREE.Group,
+    update?: (delta: number, elapsed: number) => void,
+  ): void {
+    const lights: THREE.Light[] = [];
+    group.traverse((obj) => {
+      if (obj instanceof THREE.Light) lights.push(obj);
+    });
+    this.rooms.push({ update, lights });
+  }
+
+  /**
+   * Focus one room by blueprint index, or pass `null` for the admin overview.
+   * Only the focused room's lights stay lit and only its per-frame update runs
+   * (see the `rooms` field for why). Called on every room / dimension switch.
+   */
+  setActiveRoom(index: number | null): void {
+    this.activeRoom = index;
+    this.rooms.forEach((room, i) => {
+      // Overview (null): all room lights off — ViewNavigator's hemisphere
+      // inspection light lights the dollhouse. Room mode: focused room only.
+      const on = index !== null && i === index;
+      for (const light of room.lights) light.visible = on;
+    });
+  }
+
   /**
    * Per-frame hook for animated elements. Subclasses override for
-   * dimension-wide effects and call `super.update` to keep detailed rooms
-   * animating.
+   * dimension-wide effects and call `super.update`. Only the focused room's
+   * scenery animates (all rooms in overview) — see the `rooms` field.
    */
   update(delta: number, elapsed: number): void {
-    for (const updater of this.detailUpdaters) updater(delta, elapsed);
+    if (this.activeRoom === null) {
+      for (const room of this.rooms) room.update?.(delta, elapsed);
+    } else {
+      this.rooms[this.activeRoom]?.update?.(delta, elapsed);
+    }
   }
 
   /**

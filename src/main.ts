@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ensureAudio } from '@/core/audio';
 import { Engine } from '@/core/Engine';
@@ -41,6 +42,14 @@ let active: DimensionId = params.get('dim') === 'beta' ? DimensionId.Beta : Dime
 const navigator = new ViewNavigator(engine.camera, controls, () => dimensions[active].scene);
 const interactor = new Interactor(engine.camera, engine.renderer.domElement);
 interactor.onHoverChange = setHoverLabel;
+
+// Gate lights + per-frame animation to the room in view (or all, in overview).
+// ViewNavigator fires `view:change` on every focus/room/overview change, so
+// this keeps the active dimension rendering only ~10 lights instead of ~30.
+function syncActiveRoom(): void {
+  dimensions[active].setActiveRoom(navigator.isOverview ? null : navigator.focusedRoomIndex);
+}
+window.addEventListener('view:change', syncActiveRoom);
 
 function activate(id: DimensionId): void {
   active = id;
@@ -96,6 +105,10 @@ interface QuantumSplitDebug {
   interact: (labelSubstring: string) => boolean;
   solved: () => PuzzleId[];
   session: typeof session;
+  /** Lights the renderer processes this frame: total in scene vs. lit. */
+  lightStats: () => { total: number; visible: number };
+  /** Force every light on/off — for perf A/B only; a room switch resets it. */
+  setAllLights: (on: boolean) => void;
 }
 declare global {
   interface Window {
@@ -120,6 +133,22 @@ window.__qs = {
   },
   solved: () => ALL_PUZZLES.filter((id) => puzzleState.isSolved(id)),
   session,
+  lightStats: () => {
+    let total = 0;
+    let visible = 0;
+    dimensions[active].scene.traverse((o) => {
+      if (o instanceof THREE.Light) {
+        total += 1;
+        if (o.visible) visible += 1;
+      }
+    });
+    return { total, visible };
+  },
+  setAllLights: (on) => {
+    dimensions[active].scene.traverse((o) => {
+      if (o instanceof THREE.Light) o.visible = on;
+    });
+  },
 };
 
 window.addEventListener('keydown', (e) => {
