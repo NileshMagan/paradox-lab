@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Quantum Split — Scenery Gallery</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      #app {
+        position: fixed;
+        inset: 0;
+      }
+      canvas {
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        padding: 8px 12px;
+        font: 12px/1.6 ui-monospace, monospace;
+        color: #9fb6cc;
+        background: rgba(8, 12, 18, 0.72);
+        border: 1px solid #223042;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+      #hud b {
+        color: #d6ecff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="hud">
+      <b>Scenery Gallery</b> — drag to orbit, scroll to zoom<br />
+      [R] reseed exhibits &nbsp;·&nbsp; [T] light mood: <span id="mood">showroom</span><br />
+      [1-9] jump to aisle &nbsp;·&nbsp; [ / ] step aisles &nbsp;·&nbsp; [0] overview<br />
+      seed: <span id="seed">gallery:1</span>
+    </div>
+    <script type="module" src="/src/scenery/gallery/main.ts"></script>
+  </body>
+</html>

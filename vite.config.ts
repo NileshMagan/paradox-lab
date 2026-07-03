@@ -14,5 +14,12 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        // Dev scenery showroom (src/scenery/gallery) — see src/scenery/README.md.
+        gallery: fileURLToPath(new URL('./gallery.html', import.meta.url)),
+      },
+    },
   },
 });
