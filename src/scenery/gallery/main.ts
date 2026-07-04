@@ -855,6 +855,20 @@ const GOTHIC_EXHIBITS = palExhibits(
   themed('gothic'),
 );
 
+const MANOR_EXHIBITS = palExhibits(
+  [
+    { name: 'grandfatherClock', build: (rng, pal) => S.grandfatherClock(rng, pal) },
+    { name: 'portraitRow', mount: 'wall', build: (rng, pal) => S.portraitRow(rng, pal) },
+    { name: 'hearthFireplace', mount: 'wall', build: (rng, pal) => S.hearthFireplace(rng, pal) },
+    { name: 'secretBookcase', mount: 'wall', build: (rng, pal) => S.secretBookcase(rng, pal) },
+    { name: 'seanceTable', build: (rng, pal) => S.seanceTable(rng, pal) },
+    { name: 'pipeOrgan', build: (rng, pal) => S.pipeOrgan(rng, pal) },
+    { name: 'dustSheetChair', build: (rng, pal) => S.dustSheetChair(rng, pal) },
+    { name: 'ravenPerch', build: (rng, pal) => S.ravenPerch(rng, pal) },
+  ],
+  themed('gothic', 'noir'),
+);
+
 /**
  * Custom-media aisle: every exhibit has swappable ImageSlots. The gallery
  * fills them with demo textures (via textTexture) to prove the insertion
@@ -1262,6 +1276,7 @@ const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
   WINTER_EXHIBITS,
   SPY_EXHIBITS,
   GOTHIC_EXHIBITS,
+  MANOR_EXHIBITS,
   CUSTOM_EXHIBITS,
   VISTA_EXHIBITS,
   WEATHER_EXHIBITS,

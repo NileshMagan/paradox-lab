@@ -9,7 +9,7 @@
  * single entry hosts more than one game (the two adventures share rooms.html).
  */
 
-export type GameId = 'quantum' | 'pharaoh' | 'blackout';
+export type GameId = 'quantum' | 'pharaoh' | 'blackout' | 'manor';
 
 export interface GameCard {
   id: GameId;
@@ -101,6 +101,27 @@ export const CATALOG: readonly GameCard[] = [
       accent: '#4aa8ff',
       accent2: '#ff4a4a', // vault danger wash
       emblem: '⌖',
+    },
+  },
+  {
+    id: 'manor',
+    title: 'The Hollow Manor',
+    tagline: 'The house is dead, but it is not empty. Three rooms until the night air.',
+    blurb:
+      'A gothic manor swallows you room by room: a drawing room ruled by a stopped grandfather clock, a library with a bookcase that is also a door, and a séance chamber where the board must be told what haunts the halls. Wind the clock, play the organ, and name the thing in the dark.',
+    players: '1 player',
+    coop: false,
+    length: '~1 hour · 3 stages',
+    vibe: 'Gothic horror',
+    entry: 'rooms.html',
+    launchParam: 'adventure',
+    launchValue: 'manor',
+    art: {
+      from: '#241830',
+      to: '#0c0812',
+      accent: '#a06bff',
+      accent2: '#ff8a3a', // candle-flame warmth
+      emblem: '🕯',
     },
   },
 ];

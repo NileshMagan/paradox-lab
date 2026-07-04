@@ -11,6 +11,14 @@ import { bureauArchivesGame, bureauArchivesSpec } from './bureauArchives';
 import { bureauGame } from './bureauGame';
 import { bureauVaultGame, bureauVaultSpec } from './bureauVault';
 import { egyptianTomb } from './egyptianTomb';
+import {
+  drawingRoomGame,
+  drawingRoomSpec,
+  libraryGame,
+  librarySpec,
+  seanceGame,
+  seanceSpec,
+} from './hollowManor';
 import { tombGame } from './tombGame';
 import { tombHallGame, tombHallSpec } from './tombHall';
 import { tombVaultGame, tombVaultSpec } from './tombVault';
@@ -47,6 +55,15 @@ const ADVENTURES: Array<{ id: string; name: string; stages: Stage[] }> = [
       { spec: agencyBureau, game: bureauGame },
       { spec: bureauArchivesSpec, game: bureauArchivesGame },
       { spec: bureauVaultSpec, game: bureauVaultGame },
+    ],
+  },
+  {
+    id: 'manor',
+    name: 'The Hollow Manor',
+    stages: [
+      { spec: drawingRoomSpec, game: drawingRoomGame },
+      { spec: librarySpec, game: libraryGame },
+      { spec: seanceSpec, game: seanceGame },
     ],
   },
 ];
