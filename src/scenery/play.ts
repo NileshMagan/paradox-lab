@@ -27,7 +27,15 @@ export interface RoomGame {
   update?(delta: number, elapsed: number): void;
 }
 
-export type GameFactory = (handles: Record<string, unknown>, ctx: GameCtx) => RoomGame;
+/**
+ * `carry` is the adventure's inventory: a plain object shared across a
+ * multi-room chain (stage 1 puts the scarab in; stage 2 requires it).
+ */
+export type GameFactory = (
+  handles: Record<string, unknown>,
+  ctx: GameCtx,
+  carry: Record<string, unknown>,
+) => RoomGame;
 
 /** Pointer → registered-object dispatcher (plus an id-keyed debug path). */
 export class ClickRouter {

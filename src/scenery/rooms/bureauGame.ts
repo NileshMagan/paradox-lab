@@ -16,7 +16,11 @@ import { approach, type GameCtx, type RoomGame } from '@/scenery/play';
 
 const CODE = '435';
 
-export function bureauGame(handles: Record<string, unknown>, ctx: GameCtx): RoomGame {
+export function bureauGame(
+  handles: Record<string, unknown>,
+  ctx: GameCtx,
+  carry: Record<string, unknown>,
+): RoomGame {
   const keypad = handles.keypad as ReturnType<typeof S.keypad>;
   const tripwires = handles.tripwires as ReturnType<typeof S.laserTripwires>;
   const vault = handles.vault as ReturnType<typeof S.vaultDoor>;
@@ -121,7 +125,8 @@ export function bureauGame(handles: Record<string, unknown>, ctx: GameCtx): Room
     ctx.toast(`Turn ${wheelSpins} of 3…`);
     if (wheelSpins >= 3) {
       escaped = true;
-      ctx.win('The bolts thud back and the vault swings wide. Bureau 13 never saw you.');
+      carry.keycard = true; // the black keycard stays on you
+      ctx.win('The bolts thud back and the vault swings wide. The archives are below.');
     }
   });
 

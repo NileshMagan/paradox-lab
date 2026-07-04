@@ -17,7 +17,11 @@ import { approach, type GameCtx, type RoomGame } from '@/scenery/play';
 const RING_TARGET = [3, 5, 2]; // clicks per ring (outer, middle, inner)
 const BAND_TARGET = [2, 4, 1]; // clicks per pillar band (bottom, middle, top)
 
-export function tombGame(handles: Record<string, unknown>, ctx: GameCtx): RoomGame {
+export function tombGame(
+  handles: Record<string, unknown>,
+  ctx: GameCtx,
+  carry: Record<string, unknown>,
+): RoomGame {
   const rings = handles.rings as ReturnType<typeof S.rotaryRings>;
   const pillar = handles.pillar as ReturnType<typeof S.glyphPillar>;
   const plate = handles.plate as ReturnType<typeof S.pressurePlate>;
@@ -121,7 +125,8 @@ export function tombGame(handles: Record<string, unknown>, ctx: GameCtx): RoomGa
     }
     if (placed) return;
     placed = true;
-    ctx.win('The scarab sinks. Light floods the doorway — you walk out of the pharaoh’s shadow.');
+    carry.scarab = true; // the seal travels with you into the Hall of Judgement
+    ctx.win('The scarab sinks and the inner door grinds open. Deeper, then.');
   });
 
   return {

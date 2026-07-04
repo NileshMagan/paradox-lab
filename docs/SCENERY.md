@@ -36,13 +36,14 @@ by design — the main game's puzzles stay in `systems/puzzle` and will be
 server-authoritative (see ARCHITECTURE.md); a graduated room ports its
 GameFactory logic there.
 
-**Two shipped rooms** (`src/scenery/rooms/`), each with an 8-beat puzzle
-chain, verified solvable end-to-end by scripted playthrough:
+**Two shipped ADVENTURES** (`src/scenery/rooms/`) — three stages each, an
+inventory (`carry`) travelling between stages, every chain verified solvable
+end-to-end by scripted playthrough:
 
-| Room | Theme | Chain |
-|---|---|---|
-| The Pharaoh's Antechamber | `sandstone` | wall glyphs → rotary rings (3·5·2) → sarcophagus opens → gear → chest → scarab → altar litany → pillar bands (2·4·1) → pressure plate → escape |
-| Bureau 13 | `agency`/noir | evidence board → dead clock (4:35) → keypad → lasers power down → safe → keycard → gate → briefcase note → vault wheel ×3 → escape |
+| Adventure | Stages (7-8 beats each) |
+|---|---|
+| The Pharaoh's Curse | 1. **Antechamber** — glyph halves → rings 3·5·2 → sarcophagus → gear → chest → *scarab* → pillar bands → plate. 2. **Hall of Judgement** — judgement panel → canopic jars → the third weight → balance the scale → chime triad → *ankh*. 3. **Burial Vault** — ankh lights the braziers → bearing wall → aim two mirrors → rune ring ×5 → death mask → crown the guardian. |
+| Operation Blackout | 1. **Bureau 13** — evidence board → dead clock 4:35 → keypad → lasers drop → safe → *keycard* → gate → briefcase → vault ×3. 2. **The Archives** — patient file → reel tape → patch 2-into-5 → power → x-ray shows 7 → dial → *microfilm* → freight gate (needs keycard). 3. **Server Vault** — microfilm on holo table → breakers 2·4·1 → robot arm fetches core → monitor decodes → buttons 1·3·2 → pneumatic chip → blast door. |
 
 ## Viewers (Vite pages — plain static servers can't serve them)
 
@@ -54,11 +55,11 @@ chain, verified solvable end-to-end by scripted playthrough:
 
 ## Expected challenge duration (honest estimate)
 
-Each room has 8 gated beats with search + deduction between them. For a real
-group at a screen: **~20–30 min per room, ~45–60 min for both** — hint-free.
-Duration knobs when tuning is wanted: longer codes, more red-herring props
-(the library has plenty), multi-room chains (an item from the tomb opens the
-bureau), and time pressure via the countdown pattern from the main game.
+Each adventure is 3 rooms × 7-8 gated beats ≈ 22 beats with search +
+deduction + cross-stage inventory. For a real group at a screen:
+**~50–70 minutes per adventure**, hint-free — each theme is now a full
+hour-long experience on its own. Remaining knobs: countdown timer, hints,
+red herrings.
 
 ## How to add a room
 

@@ -4,23 +4,46 @@ import { Engine } from '@/core/Engine';
 import { composeRoom, type ComposedRoom, type RoomSpec } from '@/scenery/compose';
 import { ClickRouter, type GameFactory, type RoomGame } from '@/scenery/play';
 import { agencyBureau } from './agencyBureau';
+import { bureauArchivesGame, bureauArchivesSpec } from './bureauArchives';
 import { bureauGame } from './bureauGame';
+import { bureauVaultGame, bureauVaultSpec } from './bureauVault';
 import { egyptianTomb } from './egyptianTomb';
 import { tombGame } from './tombGame';
+import { tombHallGame, tombHallSpec } from './tombHall';
+import { tombVaultGame, tombVaultSpec } from './tombVault';
 
 /**
- * Composed-room viewer + play harness. Dev page: `npm run dev` → /rooms.html.
- * Rooms are PLAYABLE here: click props to work the puzzle chain.
+ * Adventure player — multi-room escape experiences (~1 hour per theme).
+ * Winning a stage opens the way to the next; `carry` is the inventory that
+ * travels with you. Dev page: `npm run dev` → /rooms.html.
  *
- *   [1] / [2]   switch room        [V] cycle camera
- *   [C]         toggle ceiling     [R] restart (reseeded)
+ *   [1] / [2]   pick adventure     [V] cycle camera
+ *   [C]         toggle ceiling     [R] restart current stage
  *
- * `window.__composedRooms` drives clicks by id for E2E tests.
+ * `window.__composedRooms` drives clicks/stages for E2E tests.
  */
 
-const ROOMS: Array<{ spec: RoomSpec; game: GameFactory }> = [
-  { spec: egyptianTomb, game: tombGame },
-  { spec: agencyBureau, game: bureauGame },
+interface Stage {
+  spec: RoomSpec;
+  game: GameFactory;
+}
+const ADVENTURES: Array<{ name: string; stages: Stage[] }> = [
+  {
+    name: 'The Pharaoh’s Curse',
+    stages: [
+      { spec: egyptianTomb, game: tombGame },
+      { spec: tombHallSpec, game: tombHallGame },
+      { spec: tombVaultSpec, game: tombVaultGame },
+    ],
+  },
+  {
+    name: 'Operation Blackout',
+    stages: [
+      { spec: agencyBureau, game: bureauGame },
+      { spec: bureauArchivesSpec, game: bureauArchivesGame },
+      { spec: bureauVaultSpec, game: bureauVaultGame },
+    ],
+  },
 ];
 
 const container = document.getElementById('app');
@@ -39,14 +62,17 @@ let toastTimer = 0;
 let current: ComposedRoom | null = null;
 let game: RoomGame | null = null;
 let router = new ClickRouter();
-let roomIndex = 0;
+let advIndex = 0;
+let stageIndex = 0;
+let carry: Record<string, unknown> = {};
 let reseed = 0;
 let ceilingHidden = true;
-let view = 1; // start at eye level — it's a playable room, not an exhibit
-let won = false;
+let view = 1; // eye level — these are playable rooms, not exhibits
+let stageWon = false;
+let advanceTimer = 0;
 
 function applyView(): void {
-  const { w, h, d } = ROOMS[roomIndex].spec.size;
+  const { w, h, d } = ADVENTURES[advIndex].stages[stageIndex].spec.size;
   if (view === 0) {
     engine.camera.position.set(0, h * 2.6, d * 0.85);
     controls.target.set(0, 0.5, 0);
@@ -65,52 +91,68 @@ function applyCeiling(): void {
   });
 }
 
-function load(): void {
+function loadStage(): void {
   if (current) {
     scene.remove(current.group);
     current.dispose();
   }
   router = new ClickRouter();
-  won = false;
-  const { spec, game: factory } = ROOMS[roomIndex];
+  stageWon = false;
+  advanceTimer = 0;
+  const adventure = ADVENTURES[advIndex];
+  const { spec, game: factory } = adventure.stages[stageIndex];
   const seeded: RoomSpec = reseed === 0 ? spec : { ...spec, seed: `${spec.seed}:r${reseed}` };
   current = composeRoom(seeded);
   scene.add(current.group);
-  game = factory(current.handles, {
-    register: (id, object, onClick) => router.register(id, object, onClick),
-    toast: (text) => {
-      if (toastEl) {
-        toastEl.textContent = text;
-        toastTimer = 6;
-      }
+  const lastStage = stageIndex === adventure.stages.length - 1;
+  game = factory(
+    current.handles,
+    {
+      register: (id, object, onClick) => router.register(id, object, onClick),
+      toast: (text) => {
+        if (toastEl) {
+          toastEl.textContent = text;
+          toastTimer = 6;
+        }
+      },
+      setObjective: (text) => {
+        if (objectiveEl) objectiveEl.textContent = `▸ ${text}`;
+      },
+      win: (text) => {
+        stageWon = true;
+        if (toastEl) {
+          toastEl.textContent = text;
+          toastTimer = 60;
+        }
+        if (lastStage) {
+          if (objectiveEl) objectiveEl.textContent = '★ ESCAPED — adventure complete';
+        } else {
+          if (objectiveEl) objectiveEl.textContent = '✓ Stage clear — moving deeper…';
+          advanceTimer = 2.5;
+        }
+      },
     },
-    setObjective: (text) => {
-      if (objectiveEl) objectiveEl.textContent = `▸ ${text}`;
-    },
-    win: (text) => {
-      won = true;
-      if (objectiveEl) objectiveEl.textContent = '★ ESCAPED';
-      if (toastEl) {
-        toastEl.textContent = text;
-        toastTimer = 60;
-      }
-    },
-  });
+    carry,
+  );
   applyCeiling();
   applyView();
-  if (nameEl) nameEl.textContent = `${spec.name} — seed ${seeded.seed}`;
+  if (nameEl) {
+    nameEl.textContent = `${adventure.name} — stage ${stageIndex + 1}/${adventure.stages.length}: ${spec.name}`;
+  }
 }
-load();
+loadStage();
 
 window.addEventListener('keydown', (event) => {
   const digit = Number.parseInt(event.key, 10);
-  if (digit >= 1 && digit <= ROOMS.length) {
-    roomIndex = digit - 1;
+  if (digit >= 1 && digit <= ADVENTURES.length) {
+    advIndex = digit - 1;
+    stageIndex = 0;
+    carry = {};
     reseed = 0;
-    load();
+    loadStage();
   } else if (event.key === 'r' || event.key === 'R') {
     reseed++;
-    load();
+    loadStage();
   } else if (event.key === 'c' || event.key === 'C') {
     ceilingHidden = !ceilingHidden;
     applyCeiling();
@@ -122,30 +164,44 @@ window.addEventListener('keydown', (event) => {
 
 const ndc = new THREE.Vector2();
 engine.renderer.domElement.addEventListener('pointerdown', (event) => {
-  if (!current || won) return;
+  if (!current || stageWon) return;
   ndc.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
   router.route(ndc, engine.camera, current.group);
 });
 
-// E2E bridge: drive puzzle clicks by id without pointer geometry.
+// E2E bridge: drive puzzle clicks and stage flow without pointer geometry.
 declare global {
   interface Window {
-    __composedRooms?: { click: (id: string) => boolean; load: (index: number) => void };
+    __composedRooms?: {
+      click: (id: string) => boolean;
+      loadAdventure: (index: number) => void;
+      stage: () => number;
+    };
   }
 }
 window.__composedRooms = {
   click: (id) => router.click(id),
-  load: (index) => {
-    roomIndex = index;
+  loadAdventure: (index) => {
+    advIndex = index;
+    stageIndex = 0;
+    carry = {};
     reseed = 0;
-    load();
+    loadStage();
   },
+  stage: () => stageIndex,
 };
 
 engine.onUpdate((delta, elapsed) => {
   controls.update();
   current?.update(delta, elapsed);
   game?.update?.(delta, elapsed);
+  if (advanceTimer > 0) {
+    advanceTimer -= delta;
+    if (advanceTimer <= 0) {
+      stageIndex++;
+      loadStage();
+    }
+  }
   if (toastTimer > 0 && toastEl) {
     toastTimer -= delta;
     if (toastTimer <= 0) toastEl.textContent = '';
