@@ -50,6 +50,9 @@ export function tombGame(
   let plateSink = 0;
 
   ctx.setObjective('The seal is shut. The walls remember the way — read them.');
+  ctx.setHint(
+    'Every code here is written in stone. Read BOTH hieroglyph panels for the ring turns and the altar for the pillar bands, then dial the rings and bands to match — open the sarcophagus, then the chest, and set the scarab on the floor plate.',
+  );
 
   ctx.register('panelL', panelL, () => {
     readL = true;

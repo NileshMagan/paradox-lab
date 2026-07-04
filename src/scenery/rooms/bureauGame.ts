@@ -47,6 +47,9 @@ export function bureauGame(
   let wheelTarget = vault.wheel.rotation.z;
 
   ctx.setObjective('The vault won’t open while the lasers are hot. Work the case.');
+  ctx.setHint(
+    'Follow the red string on the evidence board — it leads to the wall clock. The time it stopped at (4:35) is the keypad code that kills the lasers. Behind them, the safe holds the keycard for the gate.',
+  );
 
   ctx.register('board', board, () => {
     sawBoard = true;

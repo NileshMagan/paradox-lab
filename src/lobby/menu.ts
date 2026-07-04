@@ -4,7 +4,9 @@ import {
   DIFFICULTY_TIMER,
   generateRoomCode,
   launchUrl,
+  recallLaunch,
   recallSettings,
+  rememberLaunch,
   rememberSettings,
   type Difficulty,
   type DimensionChoice,
@@ -34,6 +36,7 @@ app.innerHTML = `
         <span class="sub">Pick a room, set up a session, and drop in.</span>
       </div>
       <div class="status">
+        <div id="resume-slot"></div>
         <div>${CATALOG.length} rooms online</div>
         <div>Networked play: <b>coming soon</b> · local session ready</div>
       </div>
@@ -58,6 +61,16 @@ app.innerHTML = `
 
 const cardsEl = document.getElementById('cards') as HTMLDivElement;
 const lobbyEl = document.getElementById('lobby') as HTMLElement;
+
+// ---- Resume the last launched room (one click back in) -----------------------
+
+const lastLaunch = recallLaunch();
+if (lastLaunch) {
+  const slot = document.getElementById('resume-slot');
+  if (slot) {
+    slot.innerHTML = `<a class="resume" href="${lastLaunch.url}">↻ Resume ${getGame(lastLaunch.game).title} · ${lastLaunch.roomCode}</a>`;
+  }
+}
 
 // ---- Cards ------------------------------------------------------------------
 
@@ -255,6 +268,7 @@ function wireLobby(): void {
   lobbyEl.querySelector('#launch')?.addEventListener('click', () => {
     if (!game.coop) state.dimension = 'auto';
     rememberSettings(state);
+    rememberLaunch(state);
     window.location.href = launchUrl(state);
   });
 }

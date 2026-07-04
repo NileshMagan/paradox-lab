@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Engine } from '@/core/Engine';
+import { mountHints, type HintController } from '@/lobby/hints';
 import { mountGameOverlay } from '@/lobby/overlay';
+import { readLaunchParams } from '@/lobby/settings';
 import { composeRoom, type ComposedRoom, type RoomSpec } from '@/scenery/compose';
 import { ClickRouter, type GameFactory, type RoomGame } from '@/scenery/play';
 import { agencyBureau } from './agencyBureau';
@@ -86,6 +88,11 @@ let advanceTimer = 0;
 // overlay — it reads the launch params and never touches the scene.
 const overlay = mountGameOverlay({ title: ADVENTURES[initialAdventure].name });
 
+// Difficulty-aware hints (only when the lobby left them on). The controller
+// mounts its own button; games feed it crux text via ctx.setHint.
+const launch = readLaunchParams();
+const hints: HintController | null = launch.hints ? mountHints(launch.difficulty) : null;
+
 // Developer mode (?dev=1 from the lobby) surfaces the adventure-switch keys.
 if (new URLSearchParams(window.location.search).get('dev') === '1') {
   const dev = document.getElementById('devcontrols');
@@ -128,6 +135,9 @@ function loadStage(): void {
   current = composeRoom(seeded);
   scene.add(current.group);
   const lastStage = stageIndex === adventure.stages.length - 1;
+  // Fresh stage → clear the carried-over hint until the new game registers one.
+  hints?.setHint('');
+  hints?.notifyProgress();
   game = factory(
     current.handles,
     {
@@ -140,7 +150,10 @@ function loadStage(): void {
       },
       setObjective: (text) => {
         if (objectiveEl) objectiveEl.textContent = `▸ ${text}`;
+        // A changed objective means real progress — reset the idle nudge clock.
+        hints?.notifyProgress();
       },
+      setHint: (text) => hints?.setHint(text),
       win: (text) => {
         stageWon = true;
         if (toastEl) {
@@ -218,6 +231,7 @@ window.__composedRooms = {
 engine.onUpdate((delta, elapsed) => {
   controls.update();
   overlay.tick(delta);
+  if (!stageWon) hints?.tick(delta);
   current?.update(delta, elapsed);
   game?.update?.(delta, elapsed);
   if (advanceTimer > 0) {

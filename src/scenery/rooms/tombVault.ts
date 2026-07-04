@@ -93,6 +93,9 @@ export function tombVaultGame(
   ctx.setObjective(
     carry.ankh ? 'The vault is pitch dark. The ankh wants fire.' : 'The vault is pitch dark.',
   );
+  ctx.setHint(
+    'Nothing works in the dark — light the braziers with the ankh first. The east wall then gives the mirror turns (west ×2, east ×5) and the rune order to tap: 1-4-2-5-3.',
+  );
 
   braziers.forEach((brazier, i) => {
     brazier.flameMaterials.forEach((m) => (m.emissiveIntensity = 0.1)); // cold until the ankh

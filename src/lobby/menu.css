@@ -88,6 +88,23 @@ body {
 .masthead .status b {
   color: var(--beta);
 }
+.resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #05080d;
+  text-decoration: none;
+  background: linear-gradient(100deg, var(--alpha), var(--beta));
+  font-weight: 600;
+  transition: filter 0.15s;
+}
+.resume:hover {
+  filter: brightness(1.08);
+}
 
 /* ---- Layout ---- */
 .layout {
@@ -438,4 +455,41 @@ body {
 }
 .is-quantum .only-quantum {
   display: flex;
+}
+
+/* ---- Responsive / mobile ---- */
+@media (max-width: 900px) {
+  .lobby {
+    position: static; /* flows below the cards instead of sticking */
+  }
+  .masthead .status {
+    text-align: left;
+  }
+}
+@media (max-width: 560px) {
+  .wrap {
+    padding: 26px 16px 60px;
+  }
+  .card {
+    grid-template-columns: 60px 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+  .card .emblem {
+    width: 60px;
+    height: 60px;
+    font-size: 30px;
+  }
+  .brand h1 {
+    font-size: 34px;
+  }
+  .layout {
+    gap: 18px;
+  }
+  .segments {
+    flex-wrap: wrap;
+  }
+  .segments button {
+    min-width: 72px;
+  }
 }

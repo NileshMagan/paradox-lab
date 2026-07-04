@@ -97,6 +97,9 @@ export function bureauArchivesGame(
   xray.panelMaterial.emissiveIntensity = 0.15; // dead until power returns
 
   ctx.setObjective('The archives are half-dark and the exit reads NO POWER.');
+  ctx.setHint(
+    'Power first: the tape reels say patch the switchboard TWO into FIVE to bring the lights back. Then the X-ray filed under 7 gives the wall dial code (7), which opens the floor safe and its microfilm — the gate needs the keycard.',
+  );
 
   ctx.register('files', files, () => {
     readFiles = true;

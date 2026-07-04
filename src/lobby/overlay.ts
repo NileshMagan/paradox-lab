@@ -129,6 +129,11 @@ export function mountGameOverlay(options: OverlayOptions): GameOverlay {
     bar.append(chip);
   }
 
+  const diffChip = document.createElement('span');
+  diffChip.className = 'qs-chip';
+  diffChip.innerHTML = `<span class="k">Mode</span><span class="v">${cfg.difficulty}</span>`;
+  bar.append(diffChip);
+
   if (cfg.dev) {
     const dev = document.createElement('span');
     dev.className = 'qs-dev';

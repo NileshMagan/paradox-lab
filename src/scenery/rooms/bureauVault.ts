@@ -93,6 +93,9 @@ export function bureauVaultGame(
   let wheelTarget = exit.wheel.rotation.z;
 
   ctx.setObjective('The exit is a blast door. The room is asleep — mostly.');
+  ctx.setHint(
+    'Feed the microfilm to the holo table for the breaker order (2 · 4 · 1). Throw them, wake the robot arm for the data core, decode it on the monitor to get the button sequence, then spin the wheel to blow the blast door.',
+  );
 
   ctx.register('holo', holo.group, () => {
     if (projected) return;

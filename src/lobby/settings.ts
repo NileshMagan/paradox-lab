@@ -107,6 +107,40 @@ export function launchUrl(settings: LobbySettings): string {
   return `${game.entry}?${toLaunchParams(settings).toString()}`;
 }
 
+const LAUNCH_KEY = 'quantum-split:lastLaunch';
+
+export interface LastLaunch {
+  game: GameId;
+  roomCode: string;
+  url: string;
+  at: number;
+}
+
+/** Record the most recent launch so the hub can offer a one-click resume. */
+export function rememberLaunch(settings: LobbySettings): void {
+  try {
+    const record: LastLaunch = {
+      game: settings.game,
+      roomCode: settings.roomCode,
+      url: launchUrl(settings),
+      at: Date.now(),
+    };
+    localStorage.setItem(LAUNCH_KEY, JSON.stringify(record));
+  } catch {
+    // Non-fatal — resume is a convenience, not required.
+  }
+}
+
+export function recallLaunch(): LastLaunch | null {
+  try {
+    const raw = localStorage.getItem(LAUNCH_KEY);
+    if (raw) return JSON.parse(raw) as LastLaunch;
+  } catch {
+    // Ignore corrupt records.
+  }
+  return null;
+}
+
 /**
  * Read whatever launch params a game entry was opened with. Missing values
  * fall back to defaults so a game opened directly (no lobby) still runs.

@@ -18,6 +18,11 @@ export interface GameCtx {
   toast(text: string): void;
   /** The persistent current-goal line in the HUD. */
   setObjective(text: string): void;
+  /**
+   * The stage's crux hint — the extra nudge behind the Hint button, shown when
+   * a player is stuck. Optional per stage; set it once near the top of a game.
+   */
+  setHint(text: string): void;
   /** End the room in victory. */
   win(text: string): void;
 }

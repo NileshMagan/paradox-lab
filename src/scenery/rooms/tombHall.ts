@@ -91,6 +91,9 @@ export function tombHallGame(
       ? 'The scarab hums in your hand. The scales demand a weighing.'
       : 'The scales demand a weighing.',
   );
+  ctx.setHint(
+    'The judgement panel and the man-headed canopic jar both point to the THIRD weight as the true one. Balance that on the scale, then strike the chimes in the tone order the beam names: deep, high, middle.',
+  );
 
   ctx.register('judgePanel', panel, () => {
     readPanel = true;
