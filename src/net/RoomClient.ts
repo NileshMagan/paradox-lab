@@ -1,4 +1,4 @@
-import type { ClientMsg, PlayerInfo, ServerMsg } from './protocol';
+import type { ClientMsg, PlayerInfo, ServerMsg, SessionState } from './protocol';
 
 /**
  * Browser-side room connection. A thin, typed wrapper over a WebSocket that
@@ -9,9 +9,10 @@ import type { ClientMsg, PlayerInfo, ServerMsg } from './protocol';
  */
 
 export interface RoomClientEvents {
-  onWelcome(you: PlayerInfo, players: PlayerInfo[], solved: string[]): void;
+  onWelcome(you: PlayerInfo, players: PlayerInfo[], solved: string[], session: SessionState): void;
   onPresence(players: PlayerInfo[]): void;
   onSolved(id: string): void;
+  onSession(patch: SessionState): void;
   onStatus(status: 'connecting' | 'open' | 'closed'): void;
 }
 
@@ -48,13 +49,16 @@ export class RoomClient {
       }
       switch (msg.t) {
         case 'welcome':
-          this.events.onWelcome?.(msg.you, msg.players, msg.solved);
+          this.events.onWelcome?.(msg.you, msg.players, msg.solved, msg.session);
           break;
         case 'presence':
           this.events.onPresence?.(msg.players);
           break;
         case 'solved':
           this.events.onSolved?.(msg.id);
+          break;
+        case 'session':
+          this.events.onSession?.(msg.patch);
           break;
         case 'error':
           console.warn('[room] server error:', msg.message);
@@ -74,6 +78,11 @@ export class RoomClient {
   /** Tell the room a puzzle solved locally. */
   solve(id: string): void {
     this.send({ t: 'solve', id });
+  }
+
+  /** Push a change to the continuous session channels. */
+  session(patch: SessionState): void {
+    this.send({ t: 'session', patch });
   }
 
   disconnect(): void {

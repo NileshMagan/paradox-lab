@@ -17,13 +17,13 @@ import { WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.MP_PORT ?? 8787);
 
-/** code -> { players: Map<ws, PlayerInfo>, solved: Set<string> } */
+/** code -> { players: Map<ws, PlayerInfo>, solved: Set<string>, session: object } */
 const rooms = new Map();
 
 function roomFor(code) {
   let room = rooms.get(code);
   if (!room) {
-    room = { players: new Map(), solved: new Set() };
+    room = { players: new Map(), solved: new Set(), session: {} };
     rooms.set(code, room);
   }
   return room;
@@ -81,6 +81,7 @@ wss.on('connection', (ws) => {
         code,
         players: roster(room),
         solved: [...room.solved],
+        session: room.session,
       });
       broadcast(room, { t: 'presence', players: roster(room) }, ws);
       console.log(`[room ${code}] ${info.name} joined as ${info.role} (${room.players.size} in room)`);
@@ -96,6 +97,15 @@ wss.on('connection', (ws) => {
       room.solved.add(id);
       broadcast(room, { t: 'solved', id }); // to everyone, sender included (idempotent)
       console.log(`[room ${joinedCode}] solved ${id} (${room.solved.size} total)`);
+      return;
+    }
+
+    if (msg.t === 'session') {
+      if (!joinedCode) return;
+      const room = rooms.get(joinedCode);
+      if (!room || !msg.patch || typeof msg.patch !== 'object') return;
+      Object.assign(room.session, msg.patch); // last-writer-wins merge
+      broadcast(room, { t: 'session', patch: msg.patch }, ws); // to others only
       return;
     }
   });

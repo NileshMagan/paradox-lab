@@ -1,7 +1,9 @@
+import type { LaserColor } from '@/config/puzzles';
 import { RoomClient } from '@/net/RoomClient';
+import { session } from '@/systems/puzzle/session';
 import { puzzleState, type PuzzleId } from '@/systems/puzzle/state';
 import { DimensionId } from '@/types';
-import type { PlayerInfo, Role } from './protocol';
+import type { PlayerInfo, Role, SessionState } from './protocol';
 
 /**
  * Multiplayer bootstrap for The Quantum Split, layered over the game the same
@@ -28,17 +30,31 @@ if (params.get('mp') === '1') {
 
   const panel = mountPanel(code);
   let applyingRemote = false;
+  let lastSent = serializeSession(snapshotSession());
+
+  /** Apply a remote session patch, then rebaseline so we don't echo it back. */
+  const applySession = (patch: SessionState): void => {
+    if (patch.laserColor !== undefined) session.laserColor = patch.laserColor as LaserColor;
+    if (patch.bloomZone !== undefined) session.bloomZone = patch.bloomZone;
+    if (patch.valvesOpen !== undefined) session.valvesOpen = patch.valvesOpen;
+    if (patch.mirrors !== undefined) {
+      session.alignedMirrors.clear();
+      for (const m of patch.mirrors) session.alignedMirrors.add(m);
+    }
+    lastSent = serializeSession(snapshotSession());
+  };
 
   const client = new RoomClient(url, code, name, {
     onStatus: (status) => panel.setStatus(status),
-    onWelcome: (you, players, solved) => {
+    onWelcome: (you, players, solved, sessionState) => {
       panel.setYou(you);
       panel.setPlayers(players);
       applyRole(you.role);
-      // Catch up on anything already solved in the room.
+      // Catch up on anything already solved / mid-puzzle in the room.
       applyingRemote = true;
       for (const id of solved) puzzleState.solve(id as PuzzleId);
       applyingRemote = false;
+      applySession(sessionState);
     },
     onPresence: (players) => panel.setPlayers(players),
     onSolved: (id) => {
@@ -46,6 +62,7 @@ if (params.get('mp') === '1') {
       puzzleState.solve(id as PuzzleId);
       applyingRemote = false;
     },
+    onSession: (patch) => applySession(patch),
   });
 
   // Local solves travel to the room (but not the ones we just applied FROM it).
@@ -53,8 +70,33 @@ if (params.get('mp') === '1') {
     if (!applyingRemote) client.solve(id);
   });
 
+  // The game mutates `session` directly (rooms call its methods); poll for
+  // changes and push them. Cheap — a handful of scalars a few times a second.
+  window.setInterval(() => {
+    const snap = snapshotSession();
+    const serialized = serializeSession(snap);
+    if (serialized !== lastSent) {
+      client.session(snap);
+      lastSent = serialized;
+    }
+  }, 120);
+
   client.connect();
   window.addEventListener('beforeunload', () => client.disconnect());
+}
+
+/** Read the replicated session channels off the shared singleton. */
+function snapshotSession(): SessionState {
+  return {
+    laserColor: session.laserColor,
+    bloomZone: session.bloomZone,
+    valvesOpen: session.valvesOpen,
+    mirrors: [...session.alignedMirrors].sort((a, b) => a - b),
+  };
+}
+
+function serializeSession(s: SessionState): string {
+  return JSON.stringify(s);
 }
 
 /** Apply the server-assigned dimension via the game's existing bridge. */

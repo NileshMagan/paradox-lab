@@ -4,10 +4,10 @@
  * single source of truth for both sides. Keep messages small and flat — they're
  * JSON over a WebSocket.
  *
- * Scope today: presence, dimension assignment, and puzzle-solve replication —
- * enough to prove two clients share one authoritative room. Mid-puzzle session
- * channels (laser colour, valves, mirrors, lever timing) are the next increment
- * (see docs/ARCHITECTURE.md → Multiplayer plan).
+ * Scope: presence, dimension assignment, puzzle-solve replication, and the
+ * continuous mid-puzzle session channels (laser colour, bloom zone, valves,
+ * mirrors). Lever timing stays local for now — a simultaneous cross-machine
+ * pull needs server-authoritative clocks (see docs/ARCHITECTURE.md).
  */
 
 /** The two playable roles, plus watchers beyond the second seat. */
@@ -33,7 +33,28 @@ export interface SolveMsg {
   id: string;
 }
 
-export type ClientMsg = JoinMsg | SolveMsg;
+/**
+ * The replicated continuous session state — the mid-puzzle channels both
+ * dimensions read every frame. A message may carry any subset (a patch); the
+ * server merges it. Strings/numbers only so it stays trivially JSON-mergeable.
+ */
+export interface SessionState {
+  /** Colour Beta's laser grid emits; Alpha's flora mirrors it. */
+  laserColor?: string;
+  /** Maze zones Beta has crossed. */
+  bloomZone?: number;
+  /** Coolant valves Alpha has opened. */
+  valvesOpen?: number;
+  /** Indices of Alpha's mirrors currently aligned. */
+  mirrors?: number[];
+}
+
+export interface SessionMsg {
+  t: 'session';
+  patch: SessionState;
+}
+
+export type ClientMsg = JoinMsg | SolveMsg | SessionMsg;
 
 // ── Server → Client ──────────────────────────────────────────────────────────
 
@@ -44,6 +65,8 @@ export interface WelcomeMsg {
   players: PlayerInfo[];
   /** Puzzles already solved in this room, so a late joiner catches up. */
   solved: string[];
+  /** Current session channels, so a late joiner sees mid-puzzle state. */
+  session: SessionState;
 }
 
 export interface PresenceMsg {
@@ -61,4 +84,4 @@ export interface ErrorMsg {
   message: string;
 }
 
-export type ServerMsg = WelcomeMsg | PresenceMsg | SolvedMsg | ErrorMsg;
+export type ServerMsg = WelcomeMsg | PresenceMsg | SolvedMsg | SessionMsg | ErrorMsg;
