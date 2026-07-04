@@ -13,6 +13,15 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 5173,
     open: true,
+    // Proxy the room WebSocket to the local multiplayer server (npm run server),
+    // so the client connects same-origin at /ws in dev. See server/room-server.mjs.
+    proxy: {
+      '/ws': {
+        target: `ws://localhost:${process.env.MP_PORT ?? 8787}`,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/ws/, ''),
+      },
+    },
   },
   build: {
     target: 'es2022',

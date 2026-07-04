@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node server/room-server.mjs",
+    "dev:mp": "node scripts/dev-mp.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -15,7 +17,8 @@
     "test:e2e": "node scripts/walkthrough.mjs --fast"
   },
   "dependencies": {
-    "three": "^0.169.0"
+    "three": "^0.169.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/three": "^0.169.0",

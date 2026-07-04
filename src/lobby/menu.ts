@@ -187,6 +187,15 @@ function renderLobby(): void {
         ], 'dim')}
       </div>
 
+      ${
+        game.coop
+          ? `<div class="toggle" id="mp">
+        <div class="meta"><span class="t">Networked co-op</span><span class="d">Shared room via local server (needs npm run server)</span></div>
+        <div class="switch ${state.mp ? 'on' : ''}"></div>
+      </div>`
+          : ''
+      }
+
       <div class="toggle" id="hints">
         <div class="meta"><span class="t">Hints</span><span class="d">Nudges when a puzzle stalls</span></div>
         <div class="switch ${state.hints ? 'on' : ''}"></div>
@@ -253,6 +262,11 @@ function wireLobby(): void {
   timer?.addEventListener('input', () => {
     state.timerMinutes = Number(timer.value);
     if (timerVal) timerVal.textContent = timerLabel(state.timerMinutes);
+  });
+
+  lobbyEl.querySelector('#mp')?.addEventListener('click', () => {
+    state.mp = !state.mp;
+    lobbyEl.querySelector('#mp .switch')?.classList.toggle('on', state.mp);
   });
 
   lobbyEl.querySelector('#hints')?.addEventListener('click', () => {

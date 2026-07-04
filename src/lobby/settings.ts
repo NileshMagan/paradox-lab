@@ -23,6 +23,8 @@ export interface LobbySettings {
   hints: boolean;
   /** Which dimension the host plays — only meaningful for the co-op game. */
   dimension: DimensionChoice;
+  /** Networked co-op via the local room server (co-op game only). */
+  mp: boolean;
   /** Developer mode: re-enables debug HUD / bridges in the games. */
   dev: boolean;
 }
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: LobbySettings = {
   difficulty: 'standard',
   hints: true,
   dimension: 'auto',
+  mp: false,
   dev: false,
 };
 
@@ -93,6 +96,9 @@ export function toLaunchParams(settings: LobbySettings): URLSearchParams {
   if (settings.dev) params.set('dev', '1');
   if (settings.game === 'quantum' && settings.dimension !== 'auto') {
     params.set('dim', settings.dimension);
+  }
+  if (settings.game === 'quantum' && settings.mp) {
+    params.set('mp', '1');
   }
   const game = getGame(settings.game);
   if (game.launchParam && game.launchValue) {

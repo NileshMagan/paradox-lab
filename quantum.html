@@ -24,8 +24,10 @@
   </head>
   <body>
     <div id="app"></div>
-    <!-- Game bootstrap (unchanged) + lobby chrome layered on top. -->
+    <!-- Game bootstrap (unchanged) + lobby chrome + multiplayer, layered on top. -->
     <script type="module" src="/src/main.ts"></script>
     <script type="module" src="/src/lobby/overlayBoot.ts"></script>
+    <!-- Multiplayer is inert unless launched with ?mp=1 (needs `npm run server`). -->
+    <script type="module" src="/src/net/netBoot.ts"></script>
   </body>
 </html>
