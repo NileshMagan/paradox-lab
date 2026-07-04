@@ -40,11 +40,33 @@ session — see `docs/ARCHITECTURE.md` → *Multiplayer plan*.
 
 URL params for deep links: `?dim=alpha|beta`, `?room=1..3`, `?view=overview`.
 
+### Networked co-op (local scaffold)
+
+The Quantum Split has a **local multiplayer scaffold** — real shared rooms over
+a WebSocket server, gated behind `?mp=1` so normal single-client play is
+untouched.
+
+```bash
+npm run dev:mp     # runs Vite + the room server together
+```
+
+Then open the hub, pick **The Quantum Split**, flip on **Networked co-op**, and
+launch — or open `quantum.html?mp=1&code=SOMECODE` in two tabs. The server
+(`server/room-server.mjs`) assigns the first player Alpha, the second Beta, and
+replicates puzzle solves across both. A presence panel shows who's in the room.
+
+This is a scaffold: it's **not** wired into the static Pages deploy (Pages can't
+run a server, so `?mp=1` is simply inert there), and mid-puzzle session channels
+(laser colour, valves, mirrors, lever timing) aren't replicated yet — see
+`docs/ARCHITECTURE.md` → *Multiplayer plan* for the full design.
+
 ## Scripts
 
 | Command | Does |
 |---------|------|
 | `npm run dev` | Vite dev server (auto-opens browser) |
+| `npm run server` | Local multiplayer room server (`ws://localhost:8787`) |
+| `npm run dev:mp` | Dev server **and** room server together (for networked co-op) |
 | `npm run build` | Typecheck + production build to `dist/` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint over `src/` |
