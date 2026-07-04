@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // GitHub Pages serves this project site under /paradox-lab/. Dev stays at
+  // root. Override with BASE_PATH in CI if the repo is ever renamed.
+  base: command === 'build' ? process.env.BASE_PATH ?? '/paradox-lab/' : '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -27,4 +30,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
