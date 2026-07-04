@@ -4,7 +4,11 @@ import { DimensionId } from '@/types';
 /**
  * Minimal dev-only overlay: shows the active dimension + view and the key
  * bindings. Not part of the shipped UI — purely to make the blockout legible.
+ * Off in normal play; the lobby's "Developer mode" toggle launches the game
+ * with `?dev=1` to re-enable it (the navigation keys 1/2/Q/E/0 always work).
  */
+const DEV_ENABLED = new URLSearchParams(window.location.search).get('dev') === '1';
+
 const hud = document.createElement('div');
 hud.style.cssText = [
   'position:fixed',
@@ -18,7 +22,7 @@ hud.style.cssText = [
   'pointer-events:none',
   'z-index:10',
 ].join(';');
-document.body.appendChild(hud);
+if (DEV_ENABLED) document.body.appendChild(hud);
 
 let dimension: DimensionId = DimensionId.Alpha;
 let view = '';

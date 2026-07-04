@@ -16,10 +16,13 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
+        // Landing page / lobby (src/lobby) — the hub that launches every game.
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        // The Quantum Split — the co-op cross-dimension game (src/main.ts).
+        quantum: fileURLToPath(new URL('./quantum.html', import.meta.url)),
         // Dev scenery showroom (src/scenery/gallery) — see src/scenery/README.md.
         gallery: fileURLToPath(new URL('./gallery.html', import.meta.url)),
-        // Composed escape-room viewer (src/scenery/rooms).
+        // Composed escape-room adventures (src/scenery/rooms).
         rooms: fileURLToPath(new URL('./rooms.html', import.meta.url)),
       },
     },

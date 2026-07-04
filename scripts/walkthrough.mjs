@@ -50,7 +50,7 @@ async function main() {
 
   let failed = false;
   try {
-    await page.goto('http://localhost:5199/?dim=alpha&room=1');
+    await page.goto('http://localhost:5199/quantum.html?dim=alpha&room=1');
     await page.waitForFunction(() => Boolean(window.__qs), null, { timeout: 15_000 });
     log('game booted');
 

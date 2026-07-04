@@ -12,10 +12,24 @@ completely different worlds, and must talk each other through it to escape.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173 → the Paradox Lab hub (landing page)
 ```
 
-### Dev controls
+### Pages
+
+| Page | What it is |
+|------|-----------|
+| `/` (`index.html`) | **The hub / lobby** — pick a room, configure a session (timer, difficulty, dimension, dev mode), and launch. See `src/lobby/`. |
+| `/quantum.html` | **The Quantum Split** — the 2-player cross-dimension co-op game (`src/main.ts`). |
+| `/rooms.html?adventure=pharaoh\|blackout` | **The solo adventures** — *The Pharaoh's Curse* and *Operation Blackout* (`src/scenery/rooms`). |
+| `/gallery.html` | Scenery showroom (dev) — see `src/scenery/README.md`. |
+
+The lobby launches games with settings in the query string (`?code=` `?timer=`
+`?difficulty=` `?hints=` `?dim=` `?dev=`), so any game page can also be deep-linked
+directly. When the multiplayer server lands, the room code becomes a real shared
+session — see `docs/ARCHITECTURE.md` → *Multiplayer plan*.
+
+### Dev controls (Quantum Split — launch with **Developer mode** on / `?dev=1`)
 
 | Key | Does |
 |-----|------|

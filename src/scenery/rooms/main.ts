@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Engine } from '@/core/Engine';
+import { mountGameOverlay } from '@/lobby/overlay';
 import { composeRoom, type ComposedRoom, type RoomSpec } from '@/scenery/compose';
 import { ClickRouter, type GameFactory, type RoomGame } from '@/scenery/play';
 import { agencyBureau } from './agencyBureau';
@@ -27,8 +28,9 @@ interface Stage {
   spec: RoomSpec;
   game: GameFactory;
 }
-const ADVENTURES: Array<{ name: string; stages: Stage[] }> = [
+const ADVENTURES: Array<{ id: string; name: string; stages: Stage[] }> = [
   {
+    id: 'pharaoh',
     name: 'The Pharaoh’s Curse',
     stages: [
       { spec: egyptianTomb, game: tombGame },
@@ -37,6 +39,7 @@ const ADVENTURES: Array<{ name: string; stages: Stage[] }> = [
     ],
   },
   {
+    id: 'blackout',
     name: 'Operation Blackout',
     stages: [
       { spec: agencyBureau, game: bureauGame },
@@ -45,6 +48,14 @@ const ADVENTURES: Array<{ name: string; stages: Stage[] }> = [
     ],
   },
 ];
+
+// Which adventure to open: ?adventure=pharaoh|blackout (from the lobby launch),
+// falling back to the first. The [1]/[2] keys still cycle between them for dev.
+const requestedAdventure = new URLSearchParams(window.location.search).get('adventure');
+const initialAdventure = Math.max(
+  0,
+  ADVENTURES.findIndex((a) => a.id === requestedAdventure),
+);
 
 const container = document.getElementById('app');
 if (!container) throw new Error('#app container not found');
@@ -62,7 +73,7 @@ let toastTimer = 0;
 let current: ComposedRoom | null = null;
 let game: RoomGame | null = null;
 let router = new ClickRouter();
-let advIndex = 0;
+let advIndex = initialAdventure;
 let stageIndex = 0;
 let carry: Record<string, unknown> = {};
 let reseed = 0;
@@ -70,6 +81,18 @@ let ceilingHidden = true;
 let view = 1; // eye level — these are playable rooms, not exhibits
 let stageWon = false;
 let advanceTimer = 0;
+
+// Shared lobby chrome: countdown, room code, back-to-menu. Purely a DOM
+// overlay — it reads the launch params and never touches the scene.
+const overlay = mountGameOverlay({ title: ADVENTURES[initialAdventure].name });
+
+// Developer mode (?dev=1 from the lobby) surfaces the adventure-switch keys.
+if (new URLSearchParams(window.location.search).get('dev') === '1') {
+  const dev = document.getElementById('devcontrols');
+  const hint = document.getElementById('hint');
+  if (dev) dev.style.display = '';
+  if (hint) hint.style.display = 'none';
+}
 
 function applyView(): void {
   const { w, h, d } = ADVENTURES[advIndex].stages[stageIndex].spec.size;
@@ -126,6 +149,7 @@ function loadStage(): void {
         }
         if (lastStage) {
           if (objectiveEl) objectiveEl.textContent = '★ ESCAPED — adventure complete';
+          overlay.celebrate('YOU ESCAPED', `${adventure.name} — all three chambers cleared.`);
         } else {
           if (objectiveEl) objectiveEl.textContent = '✓ Stage clear — moving deeper…';
           advanceTimer = 2.5;
@@ -193,6 +217,7 @@ window.__composedRooms = {
 
 engine.onUpdate((delta, elapsed) => {
   controls.update();
+  overlay.tick(delta);
   current?.update(delta, elapsed);
   game?.update?.(delta, elapsed);
   if (advanceTimer > 0) {
