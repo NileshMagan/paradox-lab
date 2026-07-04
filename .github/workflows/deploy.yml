@@ -31,6 +31,9 @@ jobs:
         env:
           # Serve under /<repo>/ — matches vite.config base.
           BASE_PATH: /${{ github.event.repository.name }}/
+          # Room server URL for networked co-op (set repo var MP_URL to the
+          # Render wss:// address). Empty → multiplayer degrades to solo.
+          VITE_MP_URL: ${{ vars.MP_URL }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true

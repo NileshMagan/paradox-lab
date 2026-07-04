@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
 /**
@@ -15,7 +16,8 @@ import { WebSocketServer } from 'ws';
  * Protocol mirrors src/net/protocol.ts exactly.
  */
 
-const PORT = Number(process.env.MP_PORT ?? 8787);
+// Hosts (Render/Fly/etc.) inject PORT; fall back to MP_PORT for `npm run dev:mp`.
+const PORT = Number(process.env.PORT ?? process.env.MP_PORT ?? 8787);
 /** Matches LEVER_SYNC_WINDOW (6s) in src/config/puzzles.ts. */
 const LEVER_WINDOW_MS = 6000;
 
@@ -53,7 +55,13 @@ function broadcast(room, msg, except) {
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
+// A real HTTP server so hosted platforms get a healthy 200 on `/` (their
+// health check) while the WebSocket upgrades share the same port.
+const httpServer = createServer((req, res) => {
+  res.writeHead(200, { 'content-type': 'text/plain' });
+  res.end('paradox-lab room server ok');
+});
+const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws) => {
   let joinedCode = null;
@@ -145,4 +153,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log(`Paradox Lab multiplayer server listening on ws://localhost:${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`Paradox Lab room server listening on :${PORT} (http health + ws)`);
+});

@@ -22,13 +22,23 @@ interface QsBridge {
 }
 
 const params = new URLSearchParams(window.location.search);
-if (params.get('mp') === '1') {
+if (params.get('mp') === '1') startMultiplayer();
+
+function startMultiplayer(): void {
   const code = params.get('code') ?? 'SOLO';
   const name = params.get('name') ?? 'Player';
-  const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const url = `${wsProto}://${window.location.host}/ws`;
+  const url = resolveWsUrl();
 
   const panel = mountPanel(code);
+  if (!url) {
+    // Multiplayer requested but no server reachable from this host (e.g. the
+    // static Pages deploy with no VITE_MP_URL baked in). Fail gracefully — the
+    // game still runs single-client underneath.
+    panel.setStatus('closed');
+    panel.setOffline();
+    return;
+  }
+
   let applyingRemote = false;
   let lastSent = serializeSession(snapshotSession());
   let myDim: DimensionId | null = null;
@@ -99,6 +109,27 @@ if (params.get('mp') === '1') {
   window.addEventListener('beforeunload', () => client.disconnect());
 }
 
+/**
+ * Where to reach the room server:
+ *   • ?ws=<url>         explicit override (handy for testing prod from anywhere)
+ *   • localhost         same-origin /ws (Vite proxies it to `npm run server`)
+ *   • deployed          VITE_MP_URL baked in at build time (the hosted server)
+ * Returns null when nothing is configured — the caller degrades gracefully.
+ */
+function resolveWsUrl(): string | null {
+  const override = params.get('ws');
+  if (override) return override;
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${proto}://${window.location.host}/ws`;
+  }
+
+  const configured = import.meta.env.VITE_MP_URL as string | undefined;
+  return configured && configured.length > 0 ? configured : null;
+}
+
 /** Read the replicated session channels off the shared singleton. */
 function snapshotSession(): SessionState {
   return {
@@ -129,6 +160,7 @@ function mountPanel(code: string): {
   setStatus(s: 'connecting' | 'open' | 'closed'): void;
   setYou(you: PlayerInfo): void;
   setPlayers(players: PlayerInfo[]): void;
+  setOffline(): void;
 } {
   const style = document.createElement('style');
   style.textContent = `
@@ -182,5 +214,8 @@ function mountPanel(code: string): {
       youId = you.id;
     },
     setPlayers: render,
+    setOffline: () => {
+      body.innerHTML = `<div class="empty">networked play isn't available on this host — playing solo</div>`;
+    },
   };
 }

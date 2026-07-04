@@ -1,0 +1,21 @@
+# Render Blueprint for the Paradox Lab multiplayer room server.
+#
+# The static hub stays on GitHub Pages; only the WebSocket server runs here.
+# One-time setup: Render dashboard → New → Blueprint → pick this repo. Render
+# reads this file and creates the service. Copy the resulting URL and set the
+# `MP_URL` repo variable (wss://<service>.onrender.com) so the Pages build
+# points clients at it — see .github/workflows/deploy.yml.
+#
+# Note: the free plan spins the service down after ~15 min idle, so the first
+# connection after a lull cold-starts (~30–60s). Fine for playtests; bump the
+# plan (or use an always-on host) for anything real.
+services:
+  - type: web
+    name: paradox-lab-server
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --omit=dev
+    startCommand: node server/room-server.mjs
+    healthCheckPath: /
+    autoDeploy: true
