@@ -16,6 +16,8 @@ import { WebSocketServer } from 'ws';
  */
 
 const PORT = Number(process.env.MP_PORT ?? 8787);
+/** Matches LEVER_SYNC_WINDOW (6s) in src/config/puzzles.ts. */
+const LEVER_WINDOW_MS = 6000;
 
 /** code -> { players: Map<ws, PlayerInfo>, solved: Set<string>, session: object } */
 const rooms = new Map();
@@ -23,7 +25,7 @@ const rooms = new Map();
 function roomFor(code) {
   let room = rooms.get(code);
   if (!room) {
-    room = { players: new Map(), solved: new Set(), session: {} };
+    room = { players: new Map(), solved: new Set(), session: {}, leverPulls: {} };
     rooms.set(code, room);
   }
   return room;
@@ -106,6 +108,23 @@ wss.on('connection', (ws) => {
       if (!room || !msg.patch || typeof msg.patch !== 'object') return;
       Object.assign(room.session, msg.patch); // last-writer-wins merge
       broadcast(room, { t: 'session', patch: msg.patch }, ws); // to others only
+      return;
+    }
+
+    if (msg.t === 'lever') {
+      if (!joinedCode) return;
+      const room = rooms.get(joinedCode);
+      if (!room) return;
+      const info = room.players.get(ws);
+      if (!info || info.role === 'spectator') return;
+      room.leverPulls[info.role] = Date.now();
+      const { alpha, beta } = room.leverPulls;
+      const synced = alpha && beta && Math.abs(alpha - beta) <= LEVER_WINDOW_MS;
+      if (synced && !room.solved.has('core.lever')) {
+        room.solved.add('core.lever');
+        broadcast(room, { t: 'solved', id: 'core.lever' });
+        console.log(`[room ${joinedCode}] core.lever — simultaneous pull, ESCAPED`);
+      }
       return;
     }
   });

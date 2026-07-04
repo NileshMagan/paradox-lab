@@ -85,6 +85,11 @@ export class RoomClient {
     this.send({ t: 'session', patch });
   }
 
+  /** Tell the room this dimension's escape lever was pulled (server times it). */
+  lever(): void {
+    this.send({ t: 'lever' });
+  }
+
   disconnect(): void {
     this.closedByUs = true;
     this.ws?.close();

@@ -31,6 +31,8 @@ if (params.get('mp') === '1') {
   const panel = mountPanel(code);
   let applyingRemote = false;
   let lastSent = serializeSession(snapshotSession());
+  let myDim: DimensionId | null = null;
+  let leverSent = false;
 
   /** Apply a remote session patch, then rebaseline so we don't echo it back. */
   const applySession = (patch: SessionState): void => {
@@ -49,6 +51,7 @@ if (params.get('mp') === '1') {
     onWelcome: (you, players, solved, sessionState) => {
       panel.setYou(you);
       panel.setPlayers(players);
+      myDim = you.role === 'beta' ? DimensionId.Beta : you.role === 'alpha' ? DimensionId.Alpha : null;
       applyRole(you.role);
       // Catch up on anything already solved / mid-puzzle in the room.
       applyingRemote = true;
@@ -78,6 +81,17 @@ if (params.get('mp') === '1') {
     if (serialized !== lastSent) {
       client.session(snap);
       lastSent = serialized;
+    }
+    // The finale: report our own lever pull once per pull (rising edge). The
+    // server times both dimensions and broadcasts core.lever if simultaneous.
+    if (myDim !== null) {
+      const pulled = session.leverPulled(myDim);
+      if (pulled && !leverSent) {
+        client.lever();
+        leverSent = true;
+      } else if (!pulled) {
+        leverSent = false;
+      }
     }
   }, 120);
 

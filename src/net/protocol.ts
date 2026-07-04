@@ -54,7 +54,16 @@ export interface SessionMsg {
   patch: SessionState;
 }
 
-export type ClientMsg = JoinMsg | SolveMsg | SessionMsg;
+/**
+ * "I just pulled my dimension's escape lever." The server times both dimensions'
+ * pulls against the sync window and, if simultaneous, broadcasts the core.lever
+ * solve — the one puzzle whose authority genuinely needs a shared clock.
+ */
+export interface LeverMsg {
+  t: 'lever';
+}
+
+export type ClientMsg = JoinMsg | SolveMsg | SessionMsg | LeverMsg;
 
 // ── Server → Client ──────────────────────────────────────────────────────────
 
