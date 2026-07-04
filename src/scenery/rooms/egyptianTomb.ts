@@ -44,8 +44,8 @@ export const egyptianTomb: RoomSpec = {
     { id: 'relics', at: [3.5, -4.6], build: (rng, pal) => S.keyRelics(rng, pal) },
     { id: 'chest', at: [3.6, -1.2], rotY: -0.9, build: (rng, pal) => S.lockedChest(rng, pal) },
     // ── Hieroglyph code panels (the seeded clue carriers) ──────────────────
-    { at: [-W / 2 + 0.15, -2], rotY: Math.PI / 2, build: (rng, pal) => S.hieroglyphPanel(rng, pal) },
-    { at: [W / 2 - 0.15, -2], rotY: -Math.PI / 2, build: (rng, pal) => S.hieroglyphPanel(rng, pal) },
+    { id: 'panelL', at: [-W / 2 + 0.15, -2], rotY: Math.PI / 2, build: (rng, pal) => S.hieroglyphPanel(rng, pal) },
+    { id: 'panelR', at: [W / 2 - 0.15, -2], rotY: -Math.PI / 2, build: (rng, pal) => S.hieroglyphPanel(rng, pal) },
     { at: [-2.6, -D / 2 + 0.15], build: (rng, pal) => S.muralPanel(rng, pal, { width: 1.6, height: 1.5 }) },
     { at: [2.6, -D / 2 + 0.15], build: (rng, pal) => S.scarabRelief(rng, pal) },
     // ── Monumental dressing ────────────────────────────────────────────────
@@ -54,7 +54,7 @@ export const egyptianTomb: RoomSpec = {
     { at: [-3.9, 1.8], rotY: 0.9, build: (rng, pal) => S.pharaohBust(rng, pal) },
     { at: [3.9, 1.8], rotY: -0.9, build: (rng, pal) => S.pharaohBust(rng, pal) },
     { at: [-3.6, -2.8], rotY: Math.PI / 2, build: (rng, pal) => S.canopicJars(rng, pal) },
-    { at: [0, 3.2], build: (rng, pal) => S.stepAltar(rng, pal) },
+    { id: 'altar', at: [0, 3.2], build: (rng, pal) => S.stepAltar(rng, pal) },
     { at: [-1.6, 4.6], build: (_rng, pal) => S.ankhStand(pal) },
     { at: [2.8, 3.8], rotY: 0.4, build: (rng, pal) => S.robedStatue(rng, pal, { height: 2.1 }) },
     // ── Wall torches (sconces carry the flame look; lights above do the work)
