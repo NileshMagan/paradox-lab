@@ -887,6 +887,8 @@ const LOGIC_EXHIBITS = palExhibits(
     { name: 'slidingTiles', mount: 'wall', build: (rng, pal) => S.slidingTiles(rng, pal) },
     { name: 'laserGrid', mount: 'wall', build: (rng, pal) => S.laserGrid(rng, pal) },
     { name: 'lightsOutGrid', mount: 'wall', build: (rng, pal) => S.lightsOutGrid(rng, pal) },
+    { name: 'inscription·stone', mount: 'wall', build: (_rng, pal) => S.inscription(pal, { tone: 'stone', title: 'Inscription', text: 'The answer is written here. Read the room, not a pop-up.' }) },
+    { name: 'inscription·screen', mount: 'wall', build: (_rng, pal) => S.inscription(pal, { tone: 'screen', title: 'Console', text: 'ACCESS CODE 5 · 1 · 1. Power up, then key it in.' }) },
   ],
   themed('noir', 'sterile'),
 );

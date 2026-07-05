@@ -66,6 +66,7 @@ export * from './assets/gothic';
 export * from './assets/manor';
 export * from './assets/contraptions';
 export * from './assets/logicProps';
+export * from './assets/readable';
 export {
   createPuzzle,
   openings,

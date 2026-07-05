@@ -7,6 +7,14 @@ import { readLaunchParams } from '@/lobby/settings';
 import { composeRoom, type ComposedRoom, type RoomSpec } from '@/scenery/compose';
 import { ClickRouter, type GameFactory, type RoomGame } from '@/scenery/play';
 import { Rng } from '@/scenery/rng';
+import { inscription, type InscriptionTone } from '@/scenery/assets/readable';
+
+/** Which readable-board style fits each palette. */
+function toneFor(paletteName: string): InscriptionTone {
+  if (['neon', 'sterile', 'abyssal', 'agency'].includes(paletteName)) return 'screen';
+  if (['noir', 'gothic', 'arctic'].includes(paletteName)) return 'paper';
+  return 'stone';
+}
 import { agencyBureau } from './agencyBureau';
 import { bureauArchivesGame, bureauArchivesSpec } from './bureauArchives';
 import { bureauGame } from './bureauGame';
@@ -239,16 +247,23 @@ function loadStage(): void {
   // Fresh stage → clear the carried-over hint until the new game registers one.
   hints?.setHint('');
   hints?.notifyProgress();
+  // Readable in-world board: the worded clues/objective render here as actual
+  // writing (a tablet/note/screen per theme), separate from the glyph props.
+  const board = inscription(current.palette, { tone: toneFor(spec.paletteName), title: spec.name });
+  board.group.position.set(0, 1.68, -spec.size.d / 2 + 0.14);
+  current.group.add(board.group);
   game = factory(
     current.handles,
     {
       register: (id, object, onClick) => router.register(id, object, onClick),
       toast: (text) => {
         overlay.snack(text, 'toast');
+        board.setText(text, 'Note');
         if (toastEl) toastEl.textContent = text; // E2E mirror
       },
       setObjective: (text) => {
         overlay.snack(text, 'objective');
+        board.setText(text, 'Objective');
         if (objectiveEl) objectiveEl.textContent = `▸ ${text}`; // E2E mirror
         hints?.notifyProgress(); // a changed objective = progress; reset idle nudge
       },
