@@ -15,6 +15,8 @@ export class Interactor {
 
   hovered: Interactable | null = null;
   onHoverChange: (hovered: Interactable | null) => void = () => {};
+  /** Touch/first-person: raycast from screen centre ("straight ahead"). */
+  centerMode = false;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -49,6 +51,10 @@ export class Interactor {
 
   /** Per-frame: raycast the pointer against all targets, keep the nearest. */
   update(): void {
+    if (this.centerMode) {
+      this.pointer.set(0, 0);
+      this.hasPointer = true;
+    }
     if (!this.hasPointer || this.targets.length === 0) return;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     let best: Interactable | null = null;

@@ -1,16 +1,27 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { RENDER } from '@/config/constants';
 
 /**
  * Thin wrapper around the Three.js renderer, camera, and animation loop.
  * Owns nothing game-specific — dimensions and systems register an `update`
  * callback and receive a per-frame delta.
+ *
+ * Renders through an EffectComposer so an OutlinePass can highlight whatever
+ * the player is looking at (set via `setOutlined`); an OutputPass keeps the
+ * scene's tone-mapping/colour identical to a direct render.
  */
 export class Engine {
   readonly renderer: THREE.WebGLRenderer;
   readonly camera: THREE.PerspectiveCamera;
   scene: THREE.Scene;
 
+  private readonly composer: EffectComposer;
+  private readonly renderPass: RenderPass;
+  private readonly outlinePass: OutlinePass;
   private readonly clock = new THREE.Clock();
   private readonly updateCallbacks = new Set<(delta: number, elapsed: number) => void>();
   private running = false;
@@ -34,12 +45,35 @@ export class Engine {
 
     this.scene = new THREE.Scene();
 
+    // Post-processing chain: render → outline → tone-map/colour output.
+    const size = new THREE.Vector2(container.clientWidth, container.clientHeight);
+    this.composer = new EffectComposer(this.renderer);
+    this.renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(this.renderPass);
+    this.outlinePass = new OutlinePass(size, this.scene, this.camera);
+    this.outlinePass.edgeStrength = 3.5;
+    this.outlinePass.edgeGlow = 0.4;
+    this.outlinePass.edgeThickness = 1.2;
+    this.outlinePass.pulsePeriod = 2.2;
+    this.outlinePass.visibleEdgeColor.set('#bfe6ff');
+    this.outlinePass.hiddenEdgeColor.set('#2a4a63');
+    this.composer.addPass(this.outlinePass);
+    this.composer.addPass(new OutputPass());
+
     window.addEventListener('resize', this.onResize);
   }
 
   /** Replace the active scene (e.g. when switching the rendered dimension). */
   setScene(scene: THREE.Scene): void {
     this.scene = scene;
+    this.renderPass.scene = scene;
+    this.outlinePass.renderScene = scene;
+    this.outlinePass.selectedObjects = [];
+  }
+
+  /** Outline the object the player is looking at (empty array clears it). */
+  setOutlined(objects: THREE.Object3D[]): void {
+    this.outlinePass.selectedObjects = objects;
   }
 
   /** Register a per-frame callback. Returns an unsubscribe function. */
@@ -71,7 +105,7 @@ export class Engine {
     const delta = this.clock.getDelta();
     const elapsed = this.clock.getElapsedTime();
     for (const cb of this.updateCallbacks) cb(delta, elapsed);
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render(delta);
   };
 
   private onResize = (): void => {
@@ -79,5 +113,6 @@ export class Engine {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.composer.setSize(w, h);
   };
 }

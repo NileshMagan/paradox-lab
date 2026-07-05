@@ -42,10 +42,25 @@
         background: rgba(46, 120, 200, 0.55);
         transform: scale(0.94);
       }
+      #crosshair {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
+        border-radius: 50%;
+        border: 2px solid rgba(220, 235, 255, 0.75);
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
+        z-index: 33;
+        pointer-events: none;
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="crosshair"></div>
     <button id="forward" aria-label="Move forward" title="Hold to move forward">▲</button>
     <!-- Game bootstrap (unchanged) + lobby chrome + multiplayer, layered on top. -->
     <script type="module" src="/src/main.ts"></script>

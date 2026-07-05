@@ -314,6 +314,18 @@ if (forwardBtn) {
   forwardBtn.addEventListener('pointercancel', press(false));
 }
 
+// Look-highlight: outline whatever the player is looking at. Desktop follows the
+// mouse; touch uses screen centre (straight ahead) + a crosshair (see rooms.html).
+const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+const lookNdc = new THREE.Vector2(0, 0);
+if (!coarsePointer) {
+  engine.renderer.domElement.addEventListener('pointermove', (e) => {
+    lookNdc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  });
+} else {
+  document.getElementById('crosshair')?.style.setProperty('display', 'block');
+}
+
 // E2E bridge: drive puzzle clicks and stage flow without pointer geometry.
 declare global {
   interface Window {
@@ -343,7 +355,14 @@ engine.onUpdate((delta, elapsed) => {
   const paused = overlay.isPaused();
   controls.enabled = !paused;
   controls.update(delta);
-  if (paused) return; // freeze the room while the intro/pause modal is up
+  if (paused) {
+    engine.setOutlined([]);
+    return; // freeze the room while the intro/pause modal is up
+  }
+  // Outline the interactable under the look ray.
+  const looked = current && !stageWon ? router.pick(lookNdc, engine.camera, current.group) : null;
+  engine.setOutlined(looked ? [looked] : []);
+  if (!coarsePointer) engine.renderer.domElement.style.cursor = looked ? 'pointer' : 'default';
   if (!stageWon) hints?.tick(delta);
   current?.update(delta, elapsed);
   game?.update?.(delta, elapsed);

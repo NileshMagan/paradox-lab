@@ -90,6 +90,19 @@ export class ClickRouter {
     }
     return null;
   }
+
+  /** Like route(), but only reports the registered object under the ray (no click). */
+  pick(ndc: THREE.Vector2, camera: THREE.Camera, root: THREE.Object3D): THREE.Object3D | null {
+    this.raycaster.setFromCamera(ndc, camera);
+    for (const hit of this.raycaster.intersectObject(root, true)) {
+      let node: THREE.Object3D | null = hit.object;
+      while (node) {
+        if (this.targets.has(node)) return node;
+        node = node.parent;
+      }
+    }
+    return null;
+  }
 }
 
 /** Ease `current` toward `target`; returns the new value (frame-rate safe). */

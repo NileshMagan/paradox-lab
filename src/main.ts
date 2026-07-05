@@ -177,9 +177,16 @@ if (forwardBtn) {
   forwardBtn.addEventListener('pointercancel', press(false));
 }
 
+// Touch: hover from screen centre ("straight ahead") + show a reticle.
+if (window.matchMedia('(pointer: coarse)').matches) {
+  interactor.centerMode = true;
+  document.getElementById('crosshair')?.style.setProperty('display', 'block');
+}
+
 engine.onUpdate((delta, elapsed) => {
   controls.update(delta);
   interactor.update();
+  engine.setOutlined(!overview && interactor.hovered ? [interactor.hovered.object] : []);
   if (!overview) {
     const room = roomAt(engine.camera.position.z);
     if (room !== curRoom) {
