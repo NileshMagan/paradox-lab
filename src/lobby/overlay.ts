@@ -36,7 +36,7 @@ export interface GameOverlay {
 
 const CSS = `
 :root { --qs-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
-  --qs-serif: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --qs-serif: "Fraunces", "Iowan Old Style", Georgia, serif;
   --qs-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .qs-bar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 30;

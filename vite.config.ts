@@ -12,7 +12,10 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     port: 5173,
-    open: true,
+    // Do NOT auto-open a browser: test runs (walkthrough e2e, ad-hoc vite) each
+    // spawn their own server and would pop a tab on a random port. Open
+    // http://localhost:5173/ yourself.
+    open: false,
     // Proxy the room WebSocket to the local multiplayer server (npm run server),
     // so the client connects same-origin at /ws in dev. See server/room-server.mjs.
     proxy: {
