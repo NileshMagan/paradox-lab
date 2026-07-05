@@ -166,6 +166,50 @@ export function telegraphKey(
 }
 
 /**
+ * Bank of vertical faders. `knobs[i]` translates in y from the rail bottom up
+ * to `travel`; snap to one of `levels` detents (game sets y = level/(levels-1) *
+ * travel). A "set each fader to the coded height" mechanic.
+ */
+export function sliderBank(
+  rng: Rng,
+  pal: Palette,
+  opts: { count?: number } = {},
+): { group: THREE.Group; knobs: THREE.Group[]; travel: number; levels: number; base: number } {
+  const count = Math.min(opts.count ?? 4, 6);
+  const travel = 0.6;
+  const levels = 5;
+  const base = 1.05;
+  const group = new THREE.Group();
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(count * 0.28 + 0.16, travel + 0.5, 0.1), pal.body);
+  panel.position.set(0, base + travel / 2, 0);
+  panel.castShadow = true;
+  group.add(panel);
+  const knobs: THREE.Group[] = [];
+  for (let i = 0; i < count; i++) {
+    const cx = (i - (count - 1) / 2) * 0.28;
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.02, travel + 0.08, 0.04), pal.trim);
+    rail.position.set(cx, base + travel / 2, 0.06);
+    group.add(rail);
+    // Detent ticks so the coded levels are readable.
+    for (let l = 0; l < levels; l++) {
+      const tick = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.008, 0.02), pal.metal);
+      tick.position.set(cx + 0.06, base + (l / (levels - 1)) * travel, 0.06);
+      group.add(tick);
+    }
+    const knob = new THREE.Group();
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.09), pal.metal);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.015, 0.1), pal.glow(pal.accent));
+    cap.position.y = 0.03;
+    knob.add(grip, cap);
+    const startLevel = rng.int(levels);
+    knob.position.set(cx, base + (startLevel / (levels - 1)) * travel, 0.09);
+    group.add(knob);
+    knobs.push(knob);
+  }
+  return { group, knobs, travel, levels, base };
+}
+
+/**
  * A meshed row of gears on a backplate. `cogs[i]` rotates about z; each carries
  * one glowing notch tooth (up = aligned when rotation ≡ 0). Because real gears
  * mesh, a game should counter-rotate neighbours by `step` when one is turned.

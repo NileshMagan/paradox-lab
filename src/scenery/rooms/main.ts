@@ -18,7 +18,16 @@ import {
   telegraphGame,
   telegraphSpec,
 } from './brassLeviathan';
+import { chartGame, chartSpec, helmGame, helmSpec, holdGame, holdSpec } from './drownedGalleon';
 import { egyptianTomb } from './egyptianTomb';
+import {
+  generatorGame,
+  generatorSpec,
+  iceLabGame,
+  iceLabSpec,
+  observatoryGame,
+  observatorySpec,
+} from './frostStation';
 import {
   drawingRoomGame,
   drawingRoomSpec,
@@ -81,6 +90,24 @@ const ADVENTURES: Array<{ id: string; name: string; stages: Stage[] }> = [
       { spec: boilerDeckSpec, game: boilerDeckGame },
       { spec: telegraphSpec, game: telegraphGame },
       { spec: bridgeSpec, game: bridgeGame },
+    ],
+  },
+  {
+    id: 'galleon',
+    name: 'The Drowned Galleon',
+    stages: [
+      { spec: helmSpec, game: helmGame },
+      { spec: holdSpec, game: holdGame },
+      { spec: chartSpec, game: chartGame },
+    ],
+  },
+  {
+    id: 'frost',
+    name: 'The Frost Station',
+    stages: [
+      { spec: generatorSpec, game: generatorGame },
+      { spec: iceLabSpec, game: iceLabGame },
+      { spec: observatorySpec, game: observatoryGame },
     ],
   },
 ];

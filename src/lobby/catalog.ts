@@ -9,7 +9,14 @@
  * single entry hosts more than one game (the two adventures share rooms.html).
  */
 
-export type GameId = 'quantum' | 'pharaoh' | 'blackout' | 'manor' | 'leviathan';
+export type GameId =
+  | 'quantum'
+  | 'pharaoh'
+  | 'blackout'
+  | 'manor'
+  | 'leviathan'
+  | 'galleon'
+  | 'frost';
 
 export interface GameCard {
   id: GameId;
@@ -143,6 +150,48 @@ export const CATALOG: readonly GameCard[] = [
       accent: '#e0a838', // brass
       accent2: '#5fe6c8', // verdigris
       emblem: '⚙',
+    },
+  },
+  {
+    id: 'galleon',
+    title: 'The Drowned Galleon',
+    tagline: 'She’s taking on water and the fog is closing. Steer, pump, and signal.',
+    blurb:
+      'A foundering galleon in a dead calm. Steer the helm to the logged heading, work the bilge-pump faders to drain the flooded hold, then set the astrolabe to your star fix and fire a flare before the sea takes her.',
+    players: '1 player',
+    coop: false,
+    length: '~1 hour · 3 stages',
+    vibe: 'Nautical',
+    entry: 'rooms.html',
+    launchParam: 'adventure',
+    launchValue: 'galleon',
+    art: {
+      from: '#0c2830',
+      to: '#041014',
+      accent: '#39f0a0', // phosphor sea-green
+      accent2: '#6fd8d0',
+      emblem: '⚓',
+    },
+  },
+  {
+    id: 'frost',
+    title: 'The Frost Station',
+    tagline: 'The polar base went dark. Restore power, run the lab, and signal rescue.',
+    blurb:
+      'An abandoned research station buried in the ice. Cold-start the generator in the right order, weigh an ice core against the correct standard in the lab, then dial the observatory dome to the rescue azimuth and open it to the aurora.',
+    players: '1 player',
+    coop: false,
+    length: '~1 hour · 3 stages',
+    vibe: 'Winter survival',
+    entry: 'rooms.html',
+    launchParam: 'adventure',
+    launchValue: 'frost',
+    art: {
+      from: '#16303e',
+      to: '#060e16',
+      accent: '#66d9ff', // glacial blue
+      accent2: '#eaf6ff',
+      emblem: '❄',
     },
   },
 ];
