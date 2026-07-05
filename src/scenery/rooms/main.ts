@@ -18,6 +18,14 @@ import {
   telegraphGame,
   telegraphSpec,
 } from './brassLeviathan';
+import {
+  decodingGame,
+  decodingSpec,
+  tumblerGame,
+  tumblerSpec,
+  waterworksGame,
+  waterworksSpec,
+} from './cipherVault';
 import { chartGame, chartSpec, helmGame, helmSpec, holdGame, holdSpec } from './drownedGalleon';
 import { egyptianTomb } from './egyptianTomb';
 import {
@@ -108,6 +116,15 @@ const ADVENTURES: Array<{ id: string; name: string; stages: Stage[] }> = [
       { spec: generatorSpec, game: generatorGame },
       { spec: iceLabSpec, game: iceLabGame },
       { spec: observatorySpec, game: observatoryGame },
+    ],
+  },
+  {
+    id: 'vault',
+    name: 'The Cipher Vault',
+    stages: [
+      { spec: decodingSpec, game: decodingGame },
+      { spec: waterworksSpec, game: waterworksGame },
+      { spec: tumblerSpec, game: tumblerGame },
     ],
   },
 ];

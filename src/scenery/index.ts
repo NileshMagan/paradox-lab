@@ -65,6 +65,15 @@ export * from './assets/spy';
 export * from './assets/gothic';
 export * from './assets/manor';
 export * from './assets/contraptions';
+export * from './assets/logicProps';
+export {
+  createPuzzle,
+  openings,
+  pipeConnected,
+  type Fact,
+  type PipeKind,
+  type PuzzleMachine,
+} from './puzzleLogic';
 export * from './assets/custom';
 export * from './assets/vista';
 export * from './assets/weather';

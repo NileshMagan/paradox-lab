@@ -16,7 +16,8 @@ export type GameId =
   | 'manor'
   | 'leviathan'
   | 'galleon'
-  | 'frost';
+  | 'frost'
+  | 'vault';
 
 export interface GameCard {
   id: GameId;
@@ -192,6 +193,27 @@ export const CATALOG: readonly GameCard[] = [
       accent: '#66d9ff', // glacial blue
       accent2: '#eaf6ff',
       emblem: '❄',
+    },
+  },
+  {
+    id: 'vault',
+    title: 'The Cipher Vault',
+    tagline: 'Three interlocking mechanisms stand between you and the door.',
+    blurb:
+      'A high-security vault of pure machinery. Decode the cipher wheel to arm a powered panel, rotate a pipe grid to route real flow to the sluice, then solve a sliding-tile tumbler lock. Each door needs several things true at once — in any order.',
+    players: '1 player',
+    coop: false,
+    length: '~1 hour · 3 stages',
+    vibe: 'Logic / mechanisms',
+    entry: 'rooms.html',
+    launchParam: 'adventure',
+    launchValue: 'vault',
+    art: {
+      from: '#141a24',
+      to: '#05070b',
+      accent: '#1fd1ff',
+      accent2: '#2bff88',
+      emblem: '🔐',
     },
   },
 ];

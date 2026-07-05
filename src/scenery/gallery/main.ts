@@ -875,8 +875,18 @@ const CONTRAPTION_EXHIBITS = palExhibits(
     { name: 'valveManifold', build: (rng, pal) => S.valveManifold(rng, pal) },
     { name: 'telegraphKey', build: (rng, pal) => S.telegraphKey(rng, pal) },
     { name: 'cogTrain', build: (rng, pal) => S.cogTrain(rng, pal) },
+    { name: 'sliderBank', build: (rng, pal) => S.sliderBank(rng, pal) },
   ],
   themed('brass', 'rustbelt'),
+);
+
+const LOGIC_EXHIBITS = palExhibits(
+  [
+    { name: 'pipeGrid', mount: 'wall', build: (rng, pal) => S.pipeGrid(rng, pal) },
+    { name: 'cipherWheel', mount: 'wall', build: (rng, pal) => S.cipherWheel(rng, pal) },
+    { name: 'slidingTiles', mount: 'wall', build: (rng, pal) => S.slidingTiles(rng, pal) },
+  ],
+  themed('noir', 'sterile'),
 );
 
 /**
@@ -1288,6 +1298,7 @@ const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
   GOTHIC_EXHIBITS,
   MANOR_EXHIBITS,
   CONTRAPTION_EXHIBITS,
+  LOGIC_EXHIBITS,
   CUSTOM_EXHIBITS,
   VISTA_EXHIBITS,
   WEATHER_EXHIBITS,
