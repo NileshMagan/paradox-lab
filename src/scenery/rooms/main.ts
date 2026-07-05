@@ -10,6 +10,14 @@ import { agencyBureau } from './agencyBureau';
 import { bureauArchivesGame, bureauArchivesSpec } from './bureauArchives';
 import { bureauGame } from './bureauGame';
 import { bureauVaultGame, bureauVaultSpec } from './bureauVault';
+import {
+  boilerDeckGame,
+  boilerDeckSpec,
+  bridgeGame,
+  bridgeSpec,
+  telegraphGame,
+  telegraphSpec,
+} from './brassLeviathan';
 import { egyptianTomb } from './egyptianTomb';
 import {
   drawingRoomGame,
@@ -64,6 +72,15 @@ const ADVENTURES: Array<{ id: string; name: string; stages: Stage[] }> = [
       { spec: drawingRoomSpec, game: drawingRoomGame },
       { spec: librarySpec, game: libraryGame },
       { spec: seanceSpec, game: seanceGame },
+    ],
+  },
+  {
+    id: 'leviathan',
+    name: 'The Brass Leviathan',
+    stages: [
+      { spec: boilerDeckSpec, game: boilerDeckGame },
+      { spec: telegraphSpec, game: telegraphGame },
+      { spec: bridgeSpec, game: bridgeGame },
     ],
   },
 ];

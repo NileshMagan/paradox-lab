@@ -9,7 +9,7 @@
  * single entry hosts more than one game (the two adventures share rooms.html).
  */
 
-export type GameId = 'quantum' | 'pharaoh' | 'blackout' | 'manor';
+export type GameId = 'quantum' | 'pharaoh' | 'blackout' | 'manor' | 'leviathan';
 
 export interface GameCard {
   id: GameId;
@@ -122,6 +122,27 @@ export const CATALOG: readonly GameCard[] = [
       accent: '#a06bff',
       accent2: '#ff8a3a', // candle-flame warmth
       emblem: '🕯',
+    },
+  },
+  {
+    id: 'leviathan',
+    title: 'The Brass Leviathan',
+    tagline: 'The airship is falling. Three decks of brass and steam to save her.',
+    blurb:
+      'A steampunk dirigible loses altitude with you aboard. Balance the boiler’s pressure gauges on the boiler deck, tap out a distress call on the telegraph, then mesh the bridge’s cog train and throw the ascent lever before the Leviathan meets the ground.',
+    players: '1 player',
+    coop: false,
+    length: '~1 hour · 3 stages',
+    vibe: 'Steampunk',
+    entry: 'rooms.html',
+    launchParam: 'adventure',
+    launchValue: 'leviathan',
+    art: {
+      from: '#2a1e0c',
+      to: '#0e0a04',
+      accent: '#e0a838', // brass
+      accent2: '#5fe6c8', // verdigris
+      emblem: '⚙',
     },
   },
 ];

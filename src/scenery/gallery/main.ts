@@ -869,6 +869,16 @@ const MANOR_EXHIBITS = palExhibits(
   themed('gothic', 'noir'),
 );
 
+const CONTRAPTION_EXHIBITS = palExhibits(
+  [
+    { name: 'pressureGauges', build: (rng, pal) => S.pressureGauges(rng, pal) },
+    { name: 'valveManifold', build: (rng, pal) => S.valveManifold(rng, pal) },
+    { name: 'telegraphKey', build: (rng, pal) => S.telegraphKey(rng, pal) },
+    { name: 'cogTrain', build: (rng, pal) => S.cogTrain(rng, pal) },
+  ],
+  themed('brass', 'rustbelt'),
+);
+
 /**
  * Custom-media aisle: every exhibit has swappable ImageSlots. The gallery
  * fills them with demo textures (via textTexture) to prove the insertion
@@ -1277,6 +1287,7 @@ const ROWS: Array<{ exhibits: Exhibit[]; z: number }> = [
   SPY_EXHIBITS,
   GOTHIC_EXHIBITS,
   MANOR_EXHIBITS,
+  CONTRAPTION_EXHIBITS,
   CUSTOM_EXHIBITS,
   VISTA_EXHIBITS,
   WEATHER_EXHIBITS,
