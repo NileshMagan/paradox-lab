@@ -122,10 +122,7 @@ export class FirstPersonControls {
   }
 
   update(delta: number): void {
-    if (!this.enabled) {
-      this.apply();
-      return;
-    }
+    if (!this.enabled) return; // frozen (paused / overview) — leave the camera be
     const k = this.keys;
     let f = 0;
     let s = 0;

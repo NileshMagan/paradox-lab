@@ -20,11 +20,32 @@
       }
       canvas {
         display: block;
+        touch-action: none;
+      }
+      #forward {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        width: 74px;
+        height: 74px;
+        z-index: 34;
+        border-radius: 50%;
+        border: 1px solid rgba(150, 190, 230, 0.4);
+        background: rgba(14, 22, 34, 0.7);
+        color: #cfe0f2;
+        font-size: 26px;
+        cursor: pointer;
+        touch-action: none;
+      }
+      #forward:active {
+        background: rgba(46, 120, 200, 0.55);
+        transform: scale(0.94);
       }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <button id="forward" aria-label="Move forward" title="Hold to move forward">▲</button>
     <!-- Game bootstrap (unchanged) + lobby chrome + multiplayer, layered on top. -->
     <script type="module" src="/src/main.ts"></script>
     <script type="module" src="/src/lobby/overlayBoot.ts"></script>
