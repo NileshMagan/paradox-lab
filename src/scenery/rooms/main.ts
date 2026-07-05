@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Engine } from '@/core/Engine';
+import { FirstPersonControls } from '@/core/FirstPersonControls';
 import { mountHints, type HintController } from '@/lobby/hints';
 import { mountGameOverlay } from '@/lobby/overlay';
 import { readLaunchParams } from '@/lobby/settings';
@@ -160,13 +160,12 @@ if (!container) throw new Error('#app container not found');
 const engine = new Engine(container);
 const scene = engine.scene;
 scene.background = new THREE.Color(0x07090d);
-const controls = new OrbitControls(engine.camera, engine.renderer.domElement);
-controls.enableDamping = true;
+const controls = new FirstPersonControls(engine.camera, engine.renderer.domElement);
 
+// Hidden mirrors of game state, for the E2E bridge only (see rooms.html #hud).
 const objectiveEl = document.getElementById('objective');
 const toastEl = document.getElementById('toast');
 const nameEl = document.getElementById('room-name');
-let toastTimer = 0;
 
 let current: ComposedRoom | null = null;
 let game: RoomGame | null = null;
@@ -175,14 +174,20 @@ let advIndex = initialAdventure;
 let stageIndex = 0;
 let carry: Record<string, unknown> = {};
 let reseed = 0;
-let ceilingHidden = true;
-let view = 1; // eye level — these are playable rooms, not exhibits
+let ceilingHidden = false; // first-person: you're inside, so keep the ceiling
 let stageWon = false;
 let advanceTimer = 0;
 
-// Shared lobby chrome: countdown, room code, back-to-menu. Purely a DOM
-// overlay — it reads the launch params and never touches the scene.
-const overlay = mountGameOverlay({ title: ADVENTURES[initialAdventure].name });
+// Shared game shell: top bar, countdown, intro/pause modal, snacks, end screens.
+const overlay = mountGameOverlay({
+  title: ADVENTURES[initialAdventure].name,
+  help: [
+    'Look|Drag or swipe to look around.',
+    'Move|Arrow keys / WASD — or the ▲ button.',
+    'Interact|Tap a prop to use it.',
+    'Goal|Solve the room and escape before the clock runs out.',
+  ],
+});
 
 // Difficulty-aware hints (only when the lobby left them on). The controller
 // mounts its own button; games feed it crux text via ctx.setHint.
@@ -197,18 +202,18 @@ if (new URLSearchParams(window.location.search).get('dev') === '1') {
   if (hint) hint.style.display = 'none';
 }
 
-function applyView(): void {
-  const { w, h, d } = ADVENTURES[advIndex].stages[stageIndex].spec.size;
-  if (view === 0) {
-    engine.camera.position.set(0, h * 2.6, d * 0.85);
-    controls.target.set(0, 0.5, 0);
-  } else if (view === 1) {
-    engine.camera.position.set(0, 1.65, d / 2 - 1);
-    controls.target.set(0, 1.3, -d / 4);
-  } else {
-    engine.camera.position.set(w / 2 - 0.8, h - 0.6, d / 2 - 0.8);
-    controls.target.set(0, 0.9, 0);
-  }
+function placeInRoom(): void {
+  const { w, d } = ADVENTURES[advIndex].stages[stageIndex].spec.size;
+  const margin = 0.7; // keep the head off the walls
+  controls.setBounds({
+    minX: -w / 2 + margin,
+    maxX: w / 2 - margin,
+    minZ: -d / 2 + margin,
+    maxZ: d / 2 - margin,
+    eyeY: 1.6,
+  });
+  // Start at the near wall looking into the room (props sit at the far −Z wall).
+  controls.place(0, d / 2 - margin - 0.2, 0);
 }
 
 function applyCeiling(): void {
@@ -239,15 +244,13 @@ function loadStage(): void {
     {
       register: (id, object, onClick) => router.register(id, object, onClick),
       toast: (text) => {
-        if (toastEl) {
-          toastEl.textContent = text;
-          toastTimer = 6;
-        }
+        overlay.snack(text, 'toast');
+        if (toastEl) toastEl.textContent = text; // E2E mirror
       },
       setObjective: (text) => {
-        if (objectiveEl) objectiveEl.textContent = `▸ ${text}`;
-        // A changed objective means real progress — reset the idle nudge clock.
-        hints?.notifyProgress();
+        overlay.snack(text, 'objective');
+        if (objectiveEl) objectiveEl.textContent = `▸ ${text}`; // E2E mirror
+        hints?.notifyProgress(); // a changed objective = progress; reset idle nudge
       },
       setHint: (text) => hints?.setHint(text),
       // Puzzle-content RNG: room code + stage seed + reseed. Different codes →
@@ -255,15 +258,13 @@ function loadStage(): void {
       rng: new Rng(`${spec.seed}:${launch.roomCode || 'demo'}:r${reseed}`),
       win: (text) => {
         stageWon = true;
-        if (toastEl) {
-          toastEl.textContent = text;
-          toastTimer = 60;
-        }
+        overlay.snack(text, 'toast');
         if (lastStage) {
           if (objectiveEl) objectiveEl.textContent = '★ ESCAPED — adventure complete';
-          overlay.celebrate('YOU ESCAPED', `${adventure.name} — all three chambers cleared.`);
+          overlay.celebrate('YOU ESCAPED', `${adventure.name} — every chamber cleared.`);
         } else {
           if (objectiveEl) objectiveEl.textContent = '✓ Stage clear — moving deeper…';
+          overlay.snack('Stage clear — moving deeper…', 'objective');
           advanceTimer = 2.5;
         }
       },
@@ -271,7 +272,9 @@ function loadStage(): void {
     carry,
   );
   applyCeiling();
-  applyView();
+  placeInRoom();
+  const stageTitle = `${adventure.name} — ${stageIndex + 1}/${adventure.stages.length}: ${spec.name}`;
+  overlay.setStageTitle(stageTitle);
   if (nameEl) {
     nameEl.textContent = `${adventure.name} — stage ${stageIndex + 1}/${adventure.stages.length}: ${spec.name}`;
   }
@@ -292,18 +295,24 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'c' || event.key === 'C') {
     ceilingHidden = !ceilingHidden;
     applyCeiling();
-  } else if (event.key === 'v' || event.key === 'V') {
-    view = (view + 1) % 3;
-    applyView();
   }
 });
 
-const ndc = new THREE.Vector2();
-engine.renderer.domElement.addEventListener('pointerdown', (event) => {
-  if (!current || stageWon) return;
-  ndc.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
+// A tap (not a drag) raycasts into the room to use a prop.
+controls.onTap = (ndc) => {
+  if (!current || stageWon || overlay.isPaused()) return;
   router.route(ndc, engine.camera, current.group);
-});
+};
+
+// On-screen forward pad (touch / click-hold) — drives the FP controller.
+const forwardBtn = document.getElementById('forward');
+if (forwardBtn) {
+  const press = (on: boolean) => () => (controls.moveForward = on);
+  forwardBtn.addEventListener('pointerdown', press(true));
+  forwardBtn.addEventListener('pointerup', press(false));
+  forwardBtn.addEventListener('pointerleave', press(false));
+  forwardBtn.addEventListener('pointercancel', press(false));
+}
 
 // E2E bridge: drive puzzle clicks and stage flow without pointer geometry.
 declare global {
@@ -312,6 +321,7 @@ declare global {
       click: (id: string) => boolean;
       loadAdventure: (index: number) => void;
       stage: () => number;
+      cam: () => { x: number; y: number; z: number };
     };
   }
 }
@@ -325,11 +335,15 @@ window.__composedRooms = {
     loadStage();
   },
   stage: () => stageIndex,
+  cam: () => ({ x: engine.camera.position.x, y: engine.camera.position.y, z: engine.camera.position.z }),
 };
 
 engine.onUpdate((delta, elapsed) => {
-  controls.update();
-  overlay.tick(delta);
+  overlay.tick(delta); // self-gates on pause
+  const paused = overlay.isPaused();
+  controls.enabled = !paused;
+  controls.update(delta);
+  if (paused) return; // freeze the room while the intro/pause modal is up
   if (!stageWon) hints?.tick(delta);
   current?.update(delta, elapsed);
   game?.update?.(delta, elapsed);
@@ -339,10 +353,6 @@ engine.onUpdate((delta, elapsed) => {
       stageIndex++;
       loadStage();
     }
-  }
-  if (toastTimer > 0 && toastEl) {
-    toastTimer -= delta;
-    if (toastTimer <= 0) toastEl.textContent = '';
   }
 });
 engine.start();

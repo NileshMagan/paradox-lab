@@ -40,31 +40,32 @@ export interface HintController {
 
 const CSS = `
 .qs-hint-btn {
-  position: fixed; right: 16px; bottom: 16px; z-index: 32;
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 16px; border-radius: 999px; cursor: pointer;
-  font: 13px/1 ui-monospace, monospace; letter-spacing: .04em;
-  color: #ffe6a8; background: rgba(20,16,8,0.82);
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 10px; cursor: pointer;
+  font: 13px/1 "Inter", system-ui, sans-serif; letter-spacing: .02em;
+  color: #ffe6a8; background: rgba(28,22,8,0.82);
   border: 1px solid rgba(255,200,110,0.4);
   transition: transform .15s, box-shadow .25s, opacity .2s, color .2s;
 }
-.qs-hint-btn:hover { transform: translateY(-1px); color: #fff4d8; }
+.qs-hint-btn:hover { color: #fff4d8; border-color: rgba(255,200,110,0.8); }
 .qs-hint-btn[disabled] { opacity: .4; cursor: default; }
 .qs-hint-btn.offer {
   animation: qs-hint-glow 1.6s ease-in-out infinite;
   border-color: rgba(255,200,110,0.9);
 }
+/* Fallback position if the top bar isn't present. */
+.qs-hint-btn.qs-hint-float { position: fixed; right: 16px; top: 12px; z-index: 32; }
 @keyframes qs-hint-glow {
   0%,100% { box-shadow: 0 0 0 0 rgba(255,200,110,0.0); }
-  50% { box-shadow: 0 0 18px 2px rgba(255,200,110,0.5); }
+  50% { box-shadow: 0 0 16px 2px rgba(255,200,110,0.5); }
 }
 .qs-hint-pop {
-  position: fixed; right: 16px; bottom: 66px; z-index: 33; max-width: 340px;
+  position: fixed; right: 16px; top: 62px; z-index: 33; max-width: 340px;
   padding: 12px 15px; border-radius: 12px;
-  font: 13px/1.55 ui-monospace, monospace; color: #fff4d8;
-  background: rgba(24,18,8,0.94); border: 1px solid rgba(255,200,110,0.5);
+  font: 13px/1.55 "Inter", system-ui, sans-serif; color: #fff4d8;
+  background: rgba(28,22,8,0.95); border: 1px solid rgba(255,200,110,0.5);
   box-shadow: 0 12px 40px -12px rgba(0,0,0,0.8);
-  opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s;
+  opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .25s;
   pointer-events: none;
 }
 .qs-hint-pop.show { opacity: 1; transform: translateY(0); }
@@ -91,7 +92,11 @@ export function mountHints(difficulty: Difficulty): HintController {
   const pop = document.createElement('div');
   pop.className = 'qs-hint-pop';
 
-  document.body.append(btn, pop);
+  // Sit in the top bar next to the clock if it's there; otherwise float top-right.
+  const barRight = document.getElementById('qs-bar-right');
+  if (barRight) barRight.insertBefore(btn, barRight.firstChild);
+  else btn.classList.add('qs-hint-float');
+  document.body.append(pop);
 
   let hint = '';
   let idle = 0;
