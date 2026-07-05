@@ -17,7 +17,8 @@ export type GameId =
   | 'leviathan'
   | 'galleon'
   | 'frost'
-  | 'vault';
+  | 'vault'
+  | 'relay';
 
 export interface GameCard {
   id: GameId;
@@ -214,6 +215,27 @@ export const CATALOG: readonly GameCard[] = [
       accent: '#1fd1ff',
       accent2: '#2bff88',
       emblem: '🔐',
+    },
+  },
+  {
+    id: 'relay',
+    title: 'The Relay Station',
+    tagline: 'Every run rolls a new code. Boot the panel, route the beam, light the array.',
+    blurb:
+      'A remote signal relay you must bring back online — and its puzzles are generated fresh from your room code, so no two rooms are the same. Key the seed-derived access code, route the laser to its sensor with rotating mirrors, then solve the lights-out signal array and send the call.',
+    players: '1 player',
+    coop: false,
+    length: '~1 hour · 3 stages · replayable',
+    vibe: 'Sci-fi / procedural',
+    entry: 'rooms.html',
+    launchParam: 'adventure',
+    launchValue: 'relay',
+    art: {
+      from: '#0a1626',
+      to: '#04070d',
+      accent: '#1fd1ff',
+      accent2: '#e344c4',
+      emblem: '📡',
     },
   },
 ];

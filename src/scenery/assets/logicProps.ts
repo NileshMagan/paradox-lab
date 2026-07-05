@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Palette } from '@/scenery/palettes';
-import { openings, type PipeKind } from '@/scenery/puzzleLogic';
+import { openings, type MirrorState, type PipeKind } from '@/scenery/puzzleLogic';
 import type { Rng } from '@/scenery/rng';
 
 /**
@@ -189,4 +189,124 @@ export function slidingTiles(
   }
   rng.jitter(0.001);
   return { group, tiles, n, slotOf };
+}
+
+/**
+ * 3×3 laser grid: a beam enters at `emitter` and must exit at `sensor`. Four
+ * `mirrors` (at fixed cells) toggle between "/" (state 0) and "\" (state 1);
+ * the game sets `tile.rotation.z` = +π/4 for "/", −π/4 for "\". Solve/trace
+ * with puzzleLogic.traceLaser. Layout is guaranteed solvable (a "\"+"\" route).
+ */
+export function laserGrid(
+  rng: Rng,
+  pal: Palette,
+): {
+  group: THREE.Group;
+  mirrors: Array<{ tile: THREE.Group; r: number; c: number }>;
+  rows: number;
+  cols: number;
+  layout: MirrorState[][]; // which cells hold a mirror (state filled by game)
+  emitter: { r: number; c: number; dir: [number, number] };
+  sensor: { r: number; c: number; dir: [number, number] };
+} {
+  const rows = 3;
+  const cols = 3;
+  const mirrorCells: Array<[number, number]> = [
+    [0, 0],
+    [2, 0],
+    [0, 2],
+    [1, 1],
+  ];
+  const cell = 0.42;
+  const group = new THREE.Group();
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(cols * cell + 0.14, rows * cell + 0.14, 0.07), pal.body);
+  plate.position.set(0, 1.5, -0.05);
+  plate.castShadow = true;
+  group.add(plate);
+  const at = (r: number, c: number): [number, number] => [
+    (c - (cols - 1) / 2) * cell,
+    1.5 + ((rows - 1) / 2 - r) * cell,
+  ];
+  // Faint cell studs.
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const [x, y] = at(r, c);
+      const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 8), pal.trim);
+      stud.rotation.x = Math.PI / 2;
+      stud.position.set(x, y, 0.02);
+      group.add(stud);
+    }
+  }
+  const layout: MirrorState[][] = Array.from({ length: rows }, () => Array<MirrorState>(cols).fill(null));
+  const mirrors: Array<{ tile: THREE.Group; r: number; c: number }> = [];
+  for (const [r, c] of mirrorCells) {
+    layout[r][c] = 1; // placeholder; game owns live state
+    const [x, y] = at(r, c);
+    const tile = new THREE.Group();
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, cell * 0.9, 0.04), pal.glow(0x9fd8ff));
+    tile.add(bar);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(cell - 0.06, cell - 0.06, 0.02), pal.trim);
+    back.position.z = -0.02;
+    tile.add(back);
+    tile.position.set(x, y, 0.05);
+    tile.rotation.z = rng.chance(0.5) ? Math.PI / 4 : -Math.PI / 4;
+    group.add(tile);
+    mirrors.push({ tile, r, c });
+  }
+  // Emitter (green, left of row 0) and sensor (accent, right of row 2).
+  const [ex, ey] = at(0, 0);
+  const emitterMesh = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 10), pal.glow(0x2bff88));
+  emitterMesh.rotation.z = -Math.PI / 2;
+  emitterMesh.position.set(ex - cell / 2 - 0.06, ey, 0.05);
+  const [sx, sy] = at(2, 2);
+  const sensorMesh = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 8, 16), pal.glow(pal.accent));
+  sensorMesh.position.set(sx + cell / 2 + 0.06, sy, 0.05);
+  group.add(emitterMesh, sensorMesh);
+
+  return {
+    group,
+    mirrors,
+    rows,
+    cols,
+    layout,
+    emitter: { r: 0, c: 0, dir: [0, 1] }, // enters row 0 heading East
+    sensor: { r: 2, c: 2, dir: [0, 1] }, // must exit row 2 heading East
+  };
+}
+
+/**
+ * Lights-out panel: an n×n grid of toggle pads. Clicking one flips it and its
+ * orthogonal neighbours — the game owns the on/off state and drives each pad's
+ * emissive via `mats[i]`. `tiles[i]` is the clickable pad (row-major).
+ */
+export function lightsOutGrid(
+  rng: Rng,
+  pal: Palette,
+  opts: { n?: number } = {},
+): { group: THREE.Group; tiles: THREE.Mesh[]; mats: THREE.MeshStandardMaterial[]; n: number } {
+  const n = opts.n ?? 3;
+  const cell = 0.4;
+  const gap = 0.04;
+  const pitch = cell + gap;
+  const group = new THREE.Group();
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(n * pitch + 0.1, n * pitch + 0.1, 0.06), pal.body);
+  panel.position.set(0, 1.5, -0.05);
+  panel.castShadow = true;
+  group.add(panel);
+  const tiles: THREE.Mesh[] = [];
+  const mats: THREE.MeshStandardMaterial[] = [];
+  for (let i = 0; i < n * n; i++) {
+    const r = Math.floor(i / n);
+    const c = i % n;
+    const mat = pal.glow(pal.accent).clone();
+    mat.emissiveIntensity = 0.25;
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(cell, cell, 0.05), mat);
+    pad.userData.disposeMaterial = true;
+    pad.position.set((c - (n - 1) / 2) * pitch, 1.5 + ((n - 1) / 2 - r) * pitch, 0.03);
+    group.add(pad);
+    tiles.push(pad);
+    mats.push(mat);
+  }
+  rng.jitter(0.001);
+  return { group, tiles, mats, n };
 }

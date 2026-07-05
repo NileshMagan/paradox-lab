@@ -70,7 +70,9 @@ export {
   createPuzzle,
   openings,
   pipeConnected,
+  traceLaser,
   type Fact,
+  type MirrorState,
   type PipeKind,
   type PuzzleMachine,
 } from './puzzleLogic';

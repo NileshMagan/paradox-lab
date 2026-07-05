@@ -141,3 +141,35 @@ export function pipeConnected(
   }
   return false;
 }
+
+// ── Laser reflection (for the laserGrid mechanism) ───────────────────────────
+
+/** Mirror state per cell: 0 = "/", 1 = "\", null = empty. */
+export type MirrorState = 0 | 1 | null;
+
+/**
+ * Trace a beam through a mirror grid and report the cell/direction it exits.
+ * A "/" mirror maps E↔N and W↔S; a "\" mirror maps E↔S and W↔N. Directions are
+ * [dRow, dCol]. Returns the last in-grid cell and the direction it left in.
+ */
+export function traceLaser(
+  rows: number,
+  cols: number,
+  mirrors: MirrorState[][],
+  start: { r: number; c: number; dir: [number, number] },
+): { r: number; c: number; dir: [number, number] } {
+  let { r, c } = start;
+  let [dr, dc] = start.dir;
+  for (let step = 0; step < rows * cols * 4 + 4; step++) {
+    const m = mirrors[r]?.[c];
+    if (m === 0) [dr, dc] = [-dc, -dr]; // "/"
+    else if (m === 1) [dr, dc] = [dc, dr]; // "\"
+    const nr = r + dr;
+    const nc = c + dc;
+    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) return { r, c, dir: [dr, dc] };
+    r = nr;
+    c = nc;
+  }
+  return { r: -1, c: -1, dir: [0, 0] };
+}
+

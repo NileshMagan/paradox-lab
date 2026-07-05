@@ -6,6 +6,7 @@ import { mountGameOverlay } from '@/lobby/overlay';
 import { readLaunchParams } from '@/lobby/settings';
 import { composeRoom, type ComposedRoom, type RoomSpec } from '@/scenery/compose';
 import { ClickRouter, type GameFactory, type RoomGame } from '@/scenery/play';
+import { Rng } from '@/scenery/rng';
 import { agencyBureau } from './agencyBureau';
 import { bureauArchivesGame, bureauArchivesSpec } from './bureauArchives';
 import { bureauGame } from './bureauGame';
@@ -27,6 +28,14 @@ import {
   waterworksSpec,
 } from './cipherVault';
 import { chartGame, chartSpec, helmGame, helmSpec, holdGame, holdSpec } from './drownedGalleon';
+import {
+  accessGame,
+  accessSpec,
+  arrayGame,
+  arraySpec,
+  beamGame,
+  beamSpec,
+} from './relayStation';
 import { egyptianTomb } from './egyptianTomb';
 import {
   generatorGame,
@@ -125,6 +134,15 @@ const ADVENTURES: Array<{ id: string; name: string; stages: Stage[] }> = [
       { spec: decodingSpec, game: decodingGame },
       { spec: waterworksSpec, game: waterworksGame },
       { spec: tumblerSpec, game: tumblerGame },
+    ],
+  },
+  {
+    id: 'relay',
+    name: 'The Relay Station',
+    stages: [
+      { spec: accessSpec, game: accessGame },
+      { spec: beamSpec, game: beamGame },
+      { spec: arraySpec, game: arrayGame },
     ],
   },
 ];
@@ -232,6 +250,9 @@ function loadStage(): void {
         hints?.notifyProgress();
       },
       setHint: (text) => hints?.setHint(text),
+      // Puzzle-content RNG: room code + stage seed + reseed. Different codes →
+      // different answers; same code → reproducible. [R] reseeds for testing.
+      rng: new Rng(`${spec.seed}:${launch.roomCode || 'demo'}:r${reseed}`),
       win: (text) => {
         stageWon = true;
         if (toastEl) {

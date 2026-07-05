@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Rng } from '@/scenery/rng';
 
 /**
  * Play layer for composed rooms — a self-contained interaction runtime so a
@@ -23,6 +24,13 @@ export interface GameCtx {
    * a player is stuck. Optional per stage; set it once near the top of a game.
    */
   setHint(text: string): void;
+  /**
+   * A seeded RNG for PUZZLE CONTENT, derived from the room code + stage seed.
+   * Generate answers (codes, targets) AND the clue text from this so they always
+   * agree — different room codes then yield different, self-consistent puzzles
+   * (replayability). Same code ⇒ same puzzle (shareable/reproducible).
+   */
+  rng: Rng;
   /** End the room in victory. */
   win(text: string): void;
 }

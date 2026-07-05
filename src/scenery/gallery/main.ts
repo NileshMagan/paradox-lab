@@ -885,6 +885,8 @@ const LOGIC_EXHIBITS = palExhibits(
     { name: 'pipeGrid', mount: 'wall', build: (rng, pal) => S.pipeGrid(rng, pal) },
     { name: 'cipherWheel', mount: 'wall', build: (rng, pal) => S.cipherWheel(rng, pal) },
     { name: 'slidingTiles', mount: 'wall', build: (rng, pal) => S.slidingTiles(rng, pal) },
+    { name: 'laserGrid', mount: 'wall', build: (rng, pal) => S.laserGrid(rng, pal) },
+    { name: 'lightsOutGrid', mount: 'wall', build: (rng, pal) => S.lightsOutGrid(rng, pal) },
   ],
   themed('noir', 'sterile'),
 );
