@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.github
+docs
+public
+src
+*.html
+*.log
+.env
+.env.*

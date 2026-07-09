@@ -3,6 +3,7 @@ import { CATALOG, getGame, type GameCard, type GameId } from './catalog';
 import {
   DIFFICULTY_TIMER,
   generateRoomCode,
+  inviteUrl,
   launchUrl,
   recallLaunch,
   recallSettings,
@@ -27,6 +28,25 @@ if (!app) throw new Error('#app container not found');
 const state: LobbySettings = recallSettings();
 if (!state.roomCode) state.roomCode = generateRoomCode();
 
+const configuredMpUrl = (import.meta.env.VITE_MP_URL as string | undefined)?.trim() ?? '';
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      default:
+        return '&#39;';
+    }
+  });
+}
+
 app.innerHTML = `
   <div class="wrap">
     <header class="masthead">
@@ -38,7 +58,7 @@ app.innerHTML = `
       <div class="status">
         <div id="resume-slot"></div>
         <div>${CATALOG.length} rooms online</div>
-        <div>Networked play: <b>coming soon</b> · local session ready</div>
+        <div>Networked co-op: <b>${configuredMpUrl ? 'hosted ready' : 'local/dev ready'}</b></div>
       </div>
     </header>
 
@@ -52,8 +72,8 @@ app.innerHTML = `
     </div>
 
     <footer class="footer">
-      Rooms run in your browser. Room codes and multiplayer are stubbed locally today —
-      when the co-op server ships, these same rooms become shared sessions.
+      Rooms run in your browser. The Quantum Split can use a WebSocket room server for shared co-op;
+      solo adventures keep room codes for reproducible runs.
       See <a href="https://threejs.org" target="_blank" rel="noreferrer">Three.js</a>-powered scenes under the hood.
     </footer>
   </div>
@@ -163,11 +183,15 @@ function renderLobby(): void {
 
       <div class="field">
         <label>Difficulty</label>
-        ${segments(state.difficulty, [
-          { value: 'casual', label: 'Casual' },
-          { value: 'standard', label: 'Standard' },
-          { value: 'expert', label: 'Expert' },
-        ], 'diff')}
+        ${segments(
+          state.difficulty,
+          [
+            { value: 'casual', label: 'Casual' },
+            { value: 'standard', label: 'Standard' },
+            { value: 'expert', label: 'Expert' },
+          ],
+          'diff',
+        )}
       </div>
 
       <div class="field">
@@ -180,18 +204,47 @@ function renderLobby(): void {
 
       <div class="field only-quantum">
         <label style="width:100%">Your dimension</label>
-        ${segments(state.dimension, [
-          { value: 'auto', label: 'Auto' },
-          { value: 'alpha', label: 'Alpha' },
-          { value: 'beta', label: 'Beta' },
-        ], 'dim')}
+        ${segments(
+          state.dimension,
+          [
+            { value: 'auto', label: 'Auto' },
+            { value: 'alpha', label: 'Alpha' },
+            { value: 'beta', label: 'Beta' },
+          ],
+          'dim',
+        )}
+      </div>
+
+      <div class="field only-quantum">
+        <label>Your name</label>
+        <input class="text-input" id="player-name" maxlength="24" placeholder="Player" value="${escapeHtml(state.playerName)}" />
       </div>
 
       ${
         game.coop
           ? `<div class="toggle" id="mp">
-        <div class="meta"><span class="t">Networked co-op</span><span class="d">Shared room via local server (needs npm run server)</span></div>
+        <div class="meta"><span class="t">Networked co-op</span><span class="d">${
+          configuredMpUrl
+            ? 'Shared room via hosted server'
+            : 'Local by default; paste wss:// for hosted play'
+        }</span></div>
         <div class="switch ${state.mp ? 'on' : ''}"></div>
+      </div>`
+          : ''
+      }
+
+      ${
+        game.coop && state.mp
+          ? `<div class="field">
+        <label>Server URL</label>
+        <input class="text-input" id="ws-url" inputmode="url" placeholder="${
+          configuredMpUrl ? 'Hosted server configured' : 'ws://localhost:8787 or wss://...'
+        }" value="${escapeHtml(state.wsUrl)}" />
+        <span class="field-note">${
+          configuredMpUrl
+            ? 'Leave blank to use the hosted server baked into this build.'
+            : 'Leave blank in local dev to use /ws from npm run dev:mp.'
+        }</span>
       </div>`
           : ''
       }
@@ -209,7 +262,7 @@ function renderLobby(): void {
       <button class="launch" id="launch">Create room &amp; enter →</button>
       <div class="hint-line">${
         game.coop
-          ? 'Share the code with your partner — for now both players open the room on their own machine.'
+          ? 'Copy the invite link for your partner. The first two players become Alpha and Beta.'
           : 'Solo room — the code is yours to resume or share a run.'
       }</div>
     </div>
@@ -228,7 +281,7 @@ function wireLobby(): void {
   });
 
   lobbyEl.querySelector('#copy')?.addEventListener('click', async () => {
-    const url = new URL(launchUrl(state), window.location.href).toString();
+    const url = new URL(inviteUrl(state), window.location.href).toString();
     try {
       await navigator.clipboard.writeText(url);
       const btn = lobbyEl.querySelector('#copy');
@@ -264,9 +317,19 @@ function wireLobby(): void {
     if (timerVal) timerVal.textContent = timerLabel(state.timerMinutes);
   });
 
+  const playerName = lobbyEl.querySelector<HTMLInputElement>('#player-name');
+  playerName?.addEventListener('input', () => {
+    state.playerName = playerName.value;
+  });
+
+  const wsUrl = lobbyEl.querySelector<HTMLInputElement>('#ws-url');
+  wsUrl?.addEventListener('input', () => {
+    state.wsUrl = wsUrl.value;
+  });
+
   lobbyEl.querySelector('#mp')?.addEventListener('click', () => {
     state.mp = !state.mp;
-    lobbyEl.querySelector('#mp .switch')?.classList.toggle('on', state.mp);
+    renderLobby();
   });
 
   lobbyEl.querySelector('#hints')?.addEventListener('click', () => {

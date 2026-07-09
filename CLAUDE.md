@@ -13,14 +13,14 @@ future) — that share one physical layout but look completely different. Read
 
 **The mirrored footprint.** Both dimensions share the exact same physical
 blueprint, defined once in `src/config/facility.ts`. Layout/positions live only
-there. Dimensions (`src/dimensions/alpha`, `.../beta`) decide how things *look*,
-never *where they are*. Never hard-code prop coordinates inside a dimension.
+there. Dimensions (`src/dimensions/alpha`, `.../beta`) decide how things _look_,
+never _where they are_. Never hard-code prop coordinates inside a dimension.
 
 ## Conventions
 
 Follow `docs/CONVENTIONS.md`. In short: strict TypeScript (no `any`, no loosening
 tsconfig), `@/` alias for `src/` imports, `import type` for types, `_`-prefix
-unused params, dispose Three.js GPU resources, comments explain *why*.
+unused params, dispose Three.js GPU resources, comments explain _why_.
 
 ## Before you finish a change
 
@@ -35,7 +35,7 @@ don't just trust the typecheck.
 
 ## Architecture pointer
 
-Client-only today; the multiplayer + WebRTC voice layer is planned, not built —
-see `docs/ARCHITECTURE.md` → *Multiplayer plan*. Puzzle state will be
-server-authoritative (the only place both dimensions truly coexist). Don't build
-cross-dimension puzzle logic into a single client.
+The Quantum Split has an initial WebSocket multiplayer scaffold; WebRTC voice is
+still future work. See `docs/ARCHITECTURE.md` → _Multiplayer_. Keep moving
+cross-dimension puzzle authority toward the server; don't build new
+cross-dimension puzzle logic into only one client.

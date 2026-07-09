@@ -7,7 +7,7 @@ game concept, and [CONVENTIONS.md](./CONVENTIONS.md) for code style.
 
 The whole codebase is shaped by the **mirrored footprint** rule: the lab's
 physical layout exists once as data, and each dimension is a renderer over that
-data. Geometry *positions* come from the blueprint; *materials and lighting*
+data. Geometry _positions_ come from the blueprint; _materials and lighting_
 come from the dimension. This makes the "same place, different reality"
 invariant structural rather than something we have to remember to maintain.
 
@@ -40,7 +40,7 @@ src/
 │       ├── state.ts        # puzzle dependency graph + solved-state store
 │       └── session.ts      # live cross-dimension channel (laser colour, valves,
 │                           #   mirrors, lever timing) — local server stand-in
-├── net/                    # (planned) multiplayer — see below
+├── net/                    # multiplayer client bridge — see below
 ├── ui/
 │   ├── devHud.ts           # dev-only overlay
 │   ├── interactionHud.ts   # hover labels + gameplay toasts + solve banners
@@ -79,7 +79,7 @@ both dimensions; the blockout path remains as the fallback for future rooms.
    pointer against the active dimension's set. Puzzle solves flow through
    `puzzleState` (the dependency graph) and mid-puzzle cross-dimension state
    flows through `session` — both are module singletons that will become
-   server-replicated state (see the multiplayer plan below). Rooms *poll* both
+   server-replicated state (see the multiplayer plan below). Rooms _poll_ both
    in their `update`, so a state change in one dimension is visible in the
    other the same frame (e.g. Beta's laser colour → Alpha's blooms).
 
@@ -99,23 +99,26 @@ run with cinematic pacing, and records `docs/walkthrough.mp4`. URL params
 - **New room:** add a `RoomBlueprint` to `FACILITY`.
 - **New animated behaviour:** drive it from the dimension's `update`.
 
-## Multiplayer plan (not yet built)
+## Multiplayer
 
-The client is deliberately scaffolded first. When we add networking, the shape
-is expected to be:
+The Quantum Split has an initial WebSocket implementation:
 
-- **Transport:** a lightweight authoritative **WebSocket game server** (`net/`
-  + a sibling `server/` package) holding shared session state — which player is
-  in which dimension, and the puzzle graph state that spans both.
-- **Cross-dimension effects:** a player's interaction sends an intent to the
-  server; the server mutates shared state and broadcasts deltas; each client
-  applies the delta to *its* dimension. This is what makes "turn the valve in
-  Alpha → power reroutes in Beta" work.
+- **Transport:** `server/room-server.mjs` is a lightweight WebSocket room server.
+  `src/net/RoomClient.ts` speaks the typed protocol in `src/net/protocol.ts`.
+- **Room authority:** the server assigns the first two players Alpha and Beta,
+  keeps the roster, stores solved puzzle IDs, merges live session patches, and
+  times the final dual-lever pull.
+- **Cross-dimension effects:** the current bridge replicates solved puzzles and
+  live session channels (`laserColor`, `bloomZone`, `valvesOpen`, `mirrors`) so
+  late joiners catch up and paired clients stay in sync.
+- **Static hosting:** GitHub Pages serves the client. Hosted multiplayer needs a
+  WebSocket server URL in `VITE_MP_URL`, or a manual `?ws=wss://...` launch param.
 - **Voice:** peer-to-peer **WebRTC audio** with the game server (or a small
   signalling service) as the signalling channel. STUN for dev, TURN for prod
   NAT traversal. Config stubs already in `.env.example`.
-- **Authority:** server-authoritative for puzzle state to prevent desync and
-  cheating; clients are renderers + input.
+- **Next authority step:** validate puzzle intents on the server instead of
+  trusting solved IDs from clients. Today the server is authoritative for room
+  state storage and lever timing, but clients still decide most puzzle solves.
 
-Keeping puzzle state server-side (not in either client) is the key decision —
-it's the only place both dimensions genuinely coexist.
+Keeping puzzle state server-side is the key direction — it's the only place both
+dimensions genuinely coexist.

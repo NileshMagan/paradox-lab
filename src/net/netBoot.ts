@@ -61,7 +61,8 @@ function startMultiplayer(): void {
     onWelcome: (you, players, solved, sessionState) => {
       panel.setYou(you);
       panel.setPlayers(players);
-      myDim = you.role === 'beta' ? DimensionId.Beta : you.role === 'alpha' ? DimensionId.Alpha : null;
+      myDim =
+        you.role === 'beta' ? DimensionId.Beta : you.role === 'alpha' ? DimensionId.Alpha : null;
       applyRole(you.role);
       // Catch up on anything already solved / mid-puzzle in the room.
       applyingRemote = true;
@@ -112,7 +113,7 @@ function startMultiplayer(): void {
 /**
  * Where to reach the room server:
  *   • ?ws=<url>         explicit override (handy for testing prod from anywhere)
- *   • localhost         same-origin /ws (Vite proxies it to `npm run server`)
+ *   • localhost         direct ws://localhost:8787 (or VITE_MP_PORT)
  *   • deployed          VITE_MP_URL baked in at build time (the hosted server)
  * Returns null when nothing is configured — the caller degrades gracefully.
  */
@@ -122,8 +123,8 @@ function resolveWsUrl(): string | null {
 
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    return `${proto}://${window.location.host}/ws`;
+    const localPort = (import.meta.env.VITE_MP_PORT as string | undefined) ?? '8787';
+    return `ws://${host}:${localPort}`;
   }
 
   const configured = import.meta.env.VITE_MP_URL as string | undefined;

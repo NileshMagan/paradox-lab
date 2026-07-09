@@ -4,10 +4,9 @@
  * single source of truth for both sides. Keep messages small and flat — they're
  * JSON over a WebSocket.
  *
- * Scope: presence, dimension assignment, puzzle-solve replication, and the
- * continuous mid-puzzle session channels (laser colour, bloom zone, valves,
- * mirrors). Lever timing stays local for now — a simultaneous cross-machine
- * pull needs server-authoritative clocks (see docs/ARCHITECTURE.md).
+ * Scope: presence, dimension assignment, puzzle-solve replication, continuous
+ * mid-puzzle session channels (laser colour, bloom zone, valves, mirrors), and
+ * server-timed final lever sync.
  */
 
 /** The two playable roles, plus watchers beyond the second seat. */

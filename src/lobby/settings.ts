@@ -17,6 +17,8 @@ export interface LobbySettings {
   game: GameId;
   /** Shareable room code — client-generated today, server-issued later. */
   roomCode: string;
+  /** Display name sent to the multiplayer room server. */
+  playerName: string;
   /** Countdown length in minutes; 0 = untimed (no clock). */
   timerMinutes: number;
   difficulty: Difficulty;
@@ -25,6 +27,8 @@ export interface LobbySettings {
   dimension: DimensionChoice;
   /** Networked co-op via the local room server (co-op game only). */
   mp: boolean;
+  /** Optional WebSocket server override for static/hosted multiplayer. */
+  wsUrl: string;
   /** Developer mode: re-enables debug HUD / bridges in the games. */
   dev: boolean;
 }
@@ -39,11 +43,13 @@ export const DIFFICULTY_TIMER: Record<Difficulty, number> = {
 export const DEFAULT_SETTINGS: LobbySettings = {
   game: 'quantum',
   roomCode: '',
+  playerName: '',
   timerMinutes: DIFFICULTY_TIMER.standard,
   difficulty: 'standard',
   hints: true,
   dimension: 'auto',
   mp: false,
+  wsUrl: '',
   dev: false,
 };
 
@@ -85,7 +91,15 @@ export function recallSettings(): LobbySettings {
  * We intentionally emit the game's own long-standing params (`?dim=`) too, so
  * the existing game bootstrap keeps working unchanged.
  */
-export function toLaunchParams(settings: LobbySettings): URLSearchParams {
+interface LaunchParamOptions {
+  /** Invite links should not force the recipient to inherit the host's name. */
+  includePlayerName?: boolean;
+}
+
+export function toLaunchParams(
+  settings: LobbySettings,
+  options: LaunchParamOptions = {},
+): URLSearchParams {
   const params = new URLSearchParams();
   // `code` = the shareable room code. Distinct from the Quantum game's own
   // `?room=1..3` dev deep-link (room number), so the two never collide.
@@ -93,12 +107,16 @@ export function toLaunchParams(settings: LobbySettings): URLSearchParams {
   params.set('timer', String(settings.timerMinutes));
   params.set('difficulty', settings.difficulty);
   params.set('hints', settings.hints ? '1' : '0');
+  const playerName = settings.playerName.trim();
+  if (playerName && options.includePlayerName !== false) params.set('name', playerName);
   if (settings.dev) params.set('dev', '1');
   if (settings.game === 'quantum' && settings.dimension !== 'auto') {
     params.set('dim', settings.dimension);
   }
   if (settings.game === 'quantum' && settings.mp) {
     params.set('mp', '1');
+    const wsUrl = settings.wsUrl.trim();
+    if (wsUrl) params.set('ws', wsUrl);
   }
   const game = getGame(settings.game);
   if (game.launchParam && game.launchValue) {
@@ -111,6 +129,12 @@ export function toLaunchParams(settings: LobbySettings): URLSearchParams {
 export function launchUrl(settings: LobbySettings): string {
   const game = getGame(settings.game);
   return `${game.entry}?${toLaunchParams(settings).toString()}`;
+}
+
+/** Shareable join URL for another player. Keeps room/server settings, omits name. */
+export function inviteUrl(settings: LobbySettings): string {
+  const game = getGame(settings.game);
+  return `${game.entry}?${toLaunchParams(settings, { includePlayerName: false }).toString()}`;
 }
 
 const LAUNCH_KEY = 'quantum-split:lastLaunch';
